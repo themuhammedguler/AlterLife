@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+npm-debug.log*
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.env
+.env.local
+.DS_Store
+*.log
+firebase-credentials.json
+serviceAccountKey.json

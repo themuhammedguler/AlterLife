@@ -1,0 +1,32 @@
+# FastAPI & ASGI
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# Environment
+python-dotenv==1.0.1
+
+# Firebase Admin SDK
+firebase-admin==6.5.0
+
+# Google Gemini AI
+google-generativeai==0.8.3
+
+# LangChain & LangGraph
+# Not: langchain 0.3.x, Python 3.12 için numpy 1.26 gerektirir (pre-built wheel mevcut)
+langchain==0.3.7
+langgraph==0.2.35
+langchain-google-genai==2.0.7
+
+# HTTP client (for external APIs)
+httpx==0.27.2
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Data validation
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# Testing
+pytest==8.3.3
