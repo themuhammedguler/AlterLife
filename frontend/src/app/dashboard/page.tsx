@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   Activity,
   ArrowUpRight,
@@ -73,6 +72,13 @@ type Metric = {
   label: string;
   value: string;
   tone: string;
+};
+
+type SidebarItem = {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  href: string;
+  active: boolean;
 };
 
 const goalOptions = [
@@ -265,6 +271,17 @@ function Sparkline() {
 export default function DashboardPage() {
   const [profile, setProfile] = useState<OnboardingData | null>(null);
   const [selectedGoal, setSelectedGoal] = useState(goalOptions[0]);
+  const sidebarItems: SidebarItem[] = [
+    { icon: Home, label: "Dashboard", href: "/dashboard", active: true },
+    { icon: Rocket, label: "Simulations", href: "/simulations", active: false },
+    { icon: Layers3, label: "Parallel Futures", href: "/dashboard#futures", active: false },
+    { icon: MapPinned, label: "Roadmap", href: "/dashboard#roadmap", active: false },
+    { icon: ListTodo, label: "Daily Quests", href: "/dashboard#quests", active: false },
+    { icon: Sparkles, label: "Skills", href: "/skills", active: false },
+    { icon: Users, label: "Community", href: "/community", active: false },
+    { icon: BarChart3, label: "Analytics", href: "/analytics", active: false },
+    { icon: Settings2, label: "Settings", href: "/settings", active: false },
+  ];
 
   useEffect(() => {
     try {
@@ -311,18 +328,8 @@ export default function DashboardPage() {
         </div>
 
         <nav className={styles.sidebarNav}>
-          {[
-            [Home, "Dashboard", "/dashboard", true],
-            [Rocket, "Simulations", "/simulations", false],
-            [Layers3, "Parallel Futures", "/dashboard#futures", false],
-            [MapPinned, "Roadmap", "/dashboard#roadmap", false],
-            [ListTodo, "Daily Quests", "/dashboard#quests", false],
-            [Sparkles, "Skills", "/skills", false],
-            [Users, "Community", "/community", false],
-            [BarChart3, "Analytics", "/analytics", false],
-            [Settings2, "Settings", "/settings", false],
-          ].map(([Icon, label, href, active]) => (
-            <Link key={String(label)} href={String(href)} className={active ? styles.sidebarLinkActive : styles.sidebarLink}>
+          {sidebarItems.map(({ icon: Icon, label, href, active }) => (
+            <Link key={label} href={href} className={active ? styles.sidebarLinkActive : styles.sidebarLink}>
               <Icon className={styles.sidebarLinkIcon} />
               <span>{label}</span>
             </Link>
@@ -395,12 +402,7 @@ export default function DashboardPage() {
         </header>
 
         <main className={styles.mainGrid}>
-          <motion.section
-            className={styles.leftPanel}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-          >
+          <section className={styles.leftPanel}>
             <div className={styles.leftHeroCard}>
               <div className={styles.aiAvatarWrap}>
                 <div className={styles.aiAvatarGlow} />
@@ -458,14 +460,9 @@ export default function DashboardPage() {
                 "The best future is not predicted. It is designed one decision at a time."
               </p>
             </div>
-          </motion.section>
+          </section>
 
-          <motion.section
-            className={styles.centerPanel}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, ease: "easeOut", delay: 0.05 }}
-          >
+          <section className={styles.centerPanel}>
             <div className={styles.stageHeader}>
               <div>
                 <p className={styles.stageKicker}>Roadmap visualization</p>
@@ -525,12 +522,7 @@ export default function DashboardPage() {
                 />
               </svg>
 
-              <motion.div
-                className={styles.currentNode}
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.12, duration: 0.45 }}
-              >
+              <div className={styles.currentNode}>
                 <div className={styles.currentNodeInner}>
                   <div className={styles.currentNodePulse} />
                   <Target className={styles.currentNodeIcon} />
@@ -539,12 +531,12 @@ export default function DashboardPage() {
                   <p className={styles.currentNodeLabel}>Current Position</p>
                   <p className={styles.currentNodeMeta}>Decision point • level 12</p>
                 </div>
-              </motion.div>
+              </div>
 
               {futureScenarios.map((scenario, index) => {
                 const Icon = scenario.icon;
                 return (
-                  <motion.article
+                  <article
                     key={scenario.id}
                     className={`${styles.futureCard} ${scenario.cardClass}`}
                     style={{
@@ -553,10 +545,6 @@ export default function DashboardPage() {
                       width: scenario.position.width,
                       boxShadow: `0 24px 80px ${scenario.glow}`,
                     }}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 + index * 0.06, duration: 0.5 }}
-                    whileHover={{ y: -6, scale: 1.01 }}
                   >
                     <div className={styles.futureCardTop}>
                       <div className={styles.futureCardIconWrap} style={{ borderColor: scenario.accent }}>
@@ -599,18 +587,13 @@ export default function DashboardPage() {
                         Inspect branch <ArrowUpRight className={styles.futureLinkIcon} />
                       </span>
                     </div>
-                  </motion.article>
+                  </article>
                 );
               })}
             </div>
-          </motion.section>
+          </section>
 
-          <motion.section
-            className={styles.rightPanel}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, ease: "easeOut", delay: 0.1 }}
-          >
+          <section className={styles.rightPanel}>
             <div className={styles.panelCard}>
               <div className={styles.panelHeaderRow}>
                 <h3 className={styles.panelTitle}>Daily quests</h3>
@@ -701,7 +684,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-          </motion.section>
+          </section>
         </main>
 
         <section className={styles.bottomSection}>
@@ -719,13 +702,9 @@ export default function DashboardPage() {
 
           <div className={styles.bottomGrid}>
             {scenarioComparison.map((scenario) => (
-              <motion.article
+              <article
                 key={scenario.title}
                 className={styles.comparisonCard}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45 }}
-                whileHover={{ y: -4 }}
               >
                 <div className={styles.comparisonHeader}>
                   <span className={styles.comparisonAccent} style={{ background: scenario.accent }} />
@@ -759,7 +738,7 @@ export default function DashboardPage() {
                   </div>
                   <p>Projected balance trajectory</p>
                 </div>
-              </motion.article>
+              </article>
             ))}
 
             <div className={styles.chartCard}>
