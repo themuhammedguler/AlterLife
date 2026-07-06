@@ -15,7 +15,12 @@ const navLinks = [
 export default function Navbar() {
   const pathname = usePathname();
 
-  if (pathname === "/login" || pathname === "/onboarding" || pathname === "/") {
+  if (
+    pathname === "/login" ||
+    pathname === "/onboarding" ||
+    pathname === "/" ||
+    pathname.startsWith("/dashboard")
+  ) {
     return null;
   }
 
