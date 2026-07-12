@@ -13,6 +13,10 @@ from api.v1.routers import (
     quests,
     integrations,
     library,
+    analytics,
+    agents,
+    briefing,
+    community,
 )
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -53,6 +57,10 @@ app.include_router(skills.router,       prefix=API_PREFIX, tags=["Skills"])
 app.include_router(quests.router,       prefix=API_PREFIX, tags=["Quests"])
 app.include_router(integrations.router, prefix=API_PREFIX, tags=["Integrations"])
 app.include_router(library.router,      prefix=API_PREFIX, tags=["Library"])
+app.include_router(analytics.router,    prefix=API_PREFIX, tags=["Analytics"])
+app.include_router(agents.router,       prefix=API_PREFIX, tags=["Agents"])
+app.include_router(briefing.router,     prefix=API_PREFIX, tags=["Briefing"])
+app.include_router(community.router,    prefix=API_PREFIX, tags=["Community"])
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────

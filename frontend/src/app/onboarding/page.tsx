@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { submitOnboarding } from "@/lib/api";
 
 // ── Veri Yapıları ─────────────────────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ const WORK_PREFS = [
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Form state
   const [status, setStatus] = useState("");
@@ -58,9 +61,10 @@ export default function OnboardingPage() {
     );
   }
 
-  function handleFinish() {
-    // Verileri tarayıcı hafızasına simülasyon amaçlı kaydedelim
-    if (typeof window !== "undefined") {
+  async function handleFinish() {
+    setLoading(true);
+    setError(null);
+    try {
       const profileData = {
         status,
         age,
@@ -69,9 +73,69 @@ export default function OnboardingPage() {
         workPrefs,
         freeGoal,
       };
-      localStorage.setItem("alterlife_onboarding", JSON.stringify(profileData));
+
+      // Tarayıcı hafızasına yedek olarak kaydedelim
+      if (typeof window !== "undefined") {
+        localStorage.setItem("alterlife_onboarding", JSON.stringify(profileData));
+      }
+
+      // Backend API Onboarding çağrısı (initial simulation'ı otomatik kurar)
+      await submitOnboarding(profileData);
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Simülasyon başlatılamadı. Lütfen tekrar deneyin.");
+      setLoading(false);
     }
-    router.push("/dashboard");
+  }
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+          position: "relative",
+          zIndex: 1,
+          textAlign: "center",
+        }}
+      >
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+        <div className="glass-card animate-fade-up" style={{ padding: "48px 40px", maxWidth: "460px" }}>
+          <div style={{ marginBottom: "28px" }}>
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                border: "3px solid rgba(0, 229, 255, 0.1)",
+                borderTopColor: "var(--accent-cyan)",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto",
+              }}
+            />
+          </div>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: "12px", fontFamily: "'Outfit', sans-serif" }}>
+            <span className="text-gradient">Simülasyon Yapılandırılıyor</span>
+          </h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: 1.6, marginBottom: "16px" }}>
+            LangGraph Karar Motoru ağları kuruluyor ve Gemini ile ilk hedefinize yönelik RPG karar ağacınız oluşturuluyor.
+          </p>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+            &ldquo;Evren dallanıyor, veri yolları çiziliyor...&rdquo;
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -124,6 +188,22 @@ export default function OnboardingPage() {
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "36px" }}>
             {STEPS[step - 1].subtitle}
           </p>
+
+          {error && (
+            <div
+              style={{
+                padding: "12px",
+                background: "rgba(255, 61, 0, 0.1)",
+                border: "1px solid rgba(255, 61, 0, 0.3)",
+                borderRadius: "var(--radius-md)",
+                color: "#ff3d00",
+                fontSize: "0.85rem",
+                marginBottom: "20px",
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           {/* ── Step 1: Temel Bilgiler ────────────────────────────── */}
           {step === 1 && (
@@ -266,7 +346,7 @@ export default function OnboardingPage() {
                 }}
               >
                 <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.55 }}>
-                  Profilinizin geri kalan detaylarını (ilişki/evlilik hedefleri, ofis/ev tercihi vb.) kayıt olduktan sonra Dashboard veya Ayarlar üzerinden dilediğiniz an doldurarak ek gelişim puanları (XP) kazanabilirsiniz.
+                  Profilinizin geri kalan detaylarını (ilişki/evlilik hedefleri, ofis/ev tercihleri vb.) kayıt olduktan sonra Dashboard veya Ayarlar üzerinden dilerken doldurabilirsiniz.
                 </p>
               </div>
             </div>
@@ -300,6 +380,10 @@ export default function OnboardingPage() {
                 onClick={() => {
                   if (step === 1 && !status) {
                     alert("Lütfen durumunuzu seçin.");
+                    return;
+                  }
+                  if (step === 2 && !field) {
+                    alert("Lütfen bir alan seçin.");
                     return;
                   }
                   setStep(step + 1);

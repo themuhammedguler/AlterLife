@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { getSimulationTree, branchSimulation, runStressTest, generateSimulation } from "@/lib/api";
 
 interface NodeData {
   id: string;
@@ -11,279 +12,174 @@ interface NodeData {
   color: string;
 }
 
-// ── Çok Seviyeli Derin Karar Ağaçları ──────────────────────────────────────────
-
-const INITIAL_TREES: Record<string, NodeData[]> = {
-  software: [
-    {
-      id: "node_root",
-      label: "Şu An (Yazılımcı)",
-      parent: null,
-      metrics: { savings: 500, stress: 30, happiness: 70, career: 20 },
-      desc: "Türkiye'de yazılım geliştirici olarak çalışıyorsunuz.",
-      color: "var(--accent-cyan)",
-    },
-    {
-      id: "node_germany",
-      label: "Almanya'ya Git",
-      parent: "node_root",
-      metrics: { savings: 1200, stress: 55, happiness: 75, career: 50 },
-      desc: "Avrupa pazarında yazılım kariyeri hedefiyle Almanya'ya geçiş.",
-      color: "var(--accent-violet)",
-    },
-    {
-      id: "node_remote",
-      label: "Yurt Dışı Remote Çalış",
-      parent: "node_root",
-      metrics: { savings: 2800, stress: 40, happiness: 80, career: 55 },
-      desc: "Türkiye'den ayrılmadan yabancı firmalara uzaktan çalışma.",
-      color: "var(--accent-green)",
-    },
-    {
-      id: "node_germany_job",
-      label: "Almanya'da İş Bul",
-      parent: "node_germany",
-      metrics: { savings: 3300, stress: 60, happiness: 75, career: 70 },
-      desc: "Mavi Kart (Blue Card) ile Almanya'da doğrudan yazılımcı olarak işe başlamak.",
-      color: "var(--accent-cyan)",
-    },
-    {
-      id: "node_germany_master",
-      label: "Almanya'da Yüksek Lisans Yap",
-      parent: "node_germany",
-      metrics: { savings: -1000, stress: 50, happiness: 80, career: 60 },
-      desc: "Öğrenci vizesiyle gidip Alman üniversitelerinde yüksek lisans (Master) yapmak.",
-      color: "var(--accent-pink)",
-    },
-    {
-      id: "node_germany_job_cloud",
-      label: "Cloud & DevOps Pozisyonları",
-      parent: "node_germany_job",
-      metrics: { savings: 4000, stress: 65, happiness: 75, career: 85 },
-      desc: "Büyük ölçekli bulut mimarileri (AWS/Azure) ve Kubernetes odaklı roller.",
-      color: "var(--accent-amber)",
-    },
-    {
-      id: "node_germany_job_ai",
-      label: "Yapay Zeka (AI) Pozisyonları",
-      parent: "node_germany_job",
-      metrics: { savings: 4500, stress: 70, happiness: 80, career: 90 },
-      desc: "Almanya'daki yapay zeka araştırma ve makine öğrenimi takımları.",
-      color: "var(--accent-cyan)",
-    },
-    {
-      id: "node_germany_master_cs",
-      label: "Bilgisayar Bilimleri (CS) Master",
-      parent: "node_germany_master",
-      metrics: { savings: -800, stress: 55, happiness: 85, career: 75 },
-      desc: "Yazılım mühendisliği teorisine ve dağıtık sistemlere odaklanma.",
-      color: "var(--accent-violet)",
-    },
-    {
-      id: "node_germany_master_ds",
-      label: "Veri Bilimi (Data Science) Master",
-      parent: "node_germany_master",
-      metrics: { savings: -500, stress: 60, happiness: 80, career: 80 },
-      desc: "Büyük veri, istatistik ve veri analitiği üzerine uzmanlaşma.",
-      color: "var(--accent-pink)",
-    },
-  ],
-  design: [
-    {
-      id: "node_root",
-      label: "Şu An (Tasarımcı)",
-      parent: null,
-      metrics: { savings: 400, stress: 25, happiness: 75, career: 15 },
-      desc: "Yerel bir ajansta grafik / UI/UX tasarımcısı olarak çalışıyorsunuz.",
-      color: "var(--accent-cyan)",
-    },
-    {
-      id: "node_global_agency",
-      label: "Uluslararası Ajansa Gir",
-      parent: "node_root",
-      metrics: { savings: 2500, stress: 65, happiness: 70, career: 65 },
-      desc: "Küresel markalarla çalışarak büyük portfolyo oluşturma.",
-      color: "var(--accent-violet)",
-    },
-    {
-      id: "node_freelance",
-      label: "Freelance Tasarımcı Ol",
-      parent: "node_root",
-      metrics: { savings: 2000, stress: 35, happiness: 85, career: 50 },
-      desc: "Kendi müşteri ağını kurarak yer bağımsız tasarım yapmak.",
-      color: "var(--accent-green)",
-    },
-    {
-      id: "node_ui_ux",
-      label: "UI/UX Tasarımı Alanı",
-      parent: "node_global_agency",
-      metrics: { savings: 3200, stress: 60, happiness: 75, career: 75 },
-      desc: "Ürün geliştirme takımlarında kullanıcı deneyimine odaklanma.",
-      color: "var(--accent-cyan)",
-    },
-    {
-      id: "node_art_dir",
-      label: "Sanat Yönetmenliği (Art Direction)",
-      parent: "node_global_agency",
-      metrics: { savings: 3500, stress: 70, happiness: 70, career: 80 },
-      desc: "Yaratıcı kampanyaları ve görsel dili yöneten lider rolü.",
-      color: "var(--accent-pink)",
-    },
-  ],
-  startup: [
-    {
-      id: "node_root",
-      label: "Şu An (Girişimci Adayı)",
-      parent: null,
-      metrics: { savings: 800, stress: 35, happiness: 65, career: 25 },
-      desc: "Yeni bir girişim fikri üzerinde çalışan bağımsız kurucusunuz.",
-      color: "var(--accent-cyan)",
-    },
-    {
-      id: "node_bootstrap",
-      label: "Bootstrapped Hızlı MVP",
-      parent: "node_root",
-      metrics: { savings: 200, stress: 55, happiness: 75, career: 50 },
-      desc: "Hiç yatırım almadan kendi imkanlarınızla MVP üretmek.",
-      color: "var(--accent-violet)",
-    },
-    {
-      id: "node_vc_funding",
-      label: "Melek Yatırım Bul",
-      parent: "node_root",
-      metrics: { savings: 3000, stress: 75, happiness: 70, career: 70 },
-      desc: "Yatırımcılardan fon alarak hızlı büyüme yolunu seçmek.",
-      color: "var(--accent-green)",
-    },
-    {
-      id: "node_b2b_saas",
-      label: "B2B SaaS Projesi",
-      parent: "node_bootstrap",
-      metrics: { savings: 1000, stress: 65, happiness: 75, career: 70 },
-      desc: "Şirketlerin iş problemlerini çözen aylık abonelikli yazılım.",
-      color: "var(--accent-cyan)",
-    },
-    {
-      id: "node_b2c_app",
-      label: "B2C Mobil Uygulama",
-      parent: "node_bootstrap",
-      metrics: { savings: 500, stress: 60, happiness: 80, career: 65 },
-      desc: "Doğrudan son tüketiciye hitap eden mobil uygulama projesi.",
-      color: "var(--accent-pink)",
-    },
-  ],
-  default: [
-    {
-      id: "node_root",
-      label: "Şu An",
-      parent: null,
-      metrics: { savings: 450, stress: 30, happiness: 70, career: 20 },
-      desc: "Gelecek hedeflerini araştıran bir kaşifsiniz.",
-      color: "var(--accent-cyan)",
-    },
-    {
-      id: "node_industry_change",
-      label: "Sektör Değiştir (Yazılım)",
-      parent: "node_root",
-      metrics: { savings: 1200, stress: 55, happiness: 75, career: 60 },
-      desc: "Yazılım veya teknoloji alanına yönelme kararı.",
-      color: "var(--accent-violet)",
-    },
-    {
-      id: "node_stay_put",
-      label: "Mevcut Alanda Uzmanlaş",
-      parent: "node_root",
-      metrics: { savings: 900, stress: 40, happiness: 70, career: 50 },
-      desc: "Mevcut mesleğinizde kalıp dikey uzmanlık kazanmak.",
-      color: "var(--accent-green)",
-    },
-  ],
+const DEFAULT_NODE: NodeData = {
+  id: "node_root",
+  label: "Başlangıç Durumu",
+  parent: null,
+  metrics: { savings: 500, stress: 30, happiness: 70, career: 20 },
+  desc: "Yükleniyor...",
+  color: "var(--accent-cyan)"
 };
 
 export default function SimulationsPage() {
-  const [tree, setTree] = useState<NodeData[]>(INITIAL_TREES.default);
-  const [selectedNode, setSelectedNode] = useState<NodeData>(INITIAL_TREES.default[0]);
+  const [tree, setTree] = useState<NodeData[]>([DEFAULT_NODE]);
+  const [selectedNode, setSelectedNode] = useState<NodeData>(DEFAULT_NODE);
   const [whatIfText, setWhatIfText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<{ optionA: string; optionB: string } | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const data = localStorage.getItem("alterlife_onboarding");
-      if (data) {
-        try {
-          const profile = JSON.parse(data);
-          const field = profile.field;
-          if (INITIAL_TREES[field]) {
-            setTree(INITIAL_TREES[field]);
-            setSelectedNode(INITIAL_TREES[field][0]);
-          }
-        } catch (e) {
-          console.error("Onboarding verisi yuklenemedi", e);
-        }
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Load Tree from Backend
+  const loadTree = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let baseGoal: string | null = null;
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        baseGoal = params.get("base_goal");
       }
+
+      let data;
+      if (baseGoal) {
+        data = await generateSimulation(baseGoal);
+        if (typeof window !== "undefined") {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } else {
+        data = await getSimulationTree();
+      }
+
+      if (data && data.nodes) {
+        const mapped: NodeData[] = data.nodes.map((n: any, idx: number) => {
+          let nodeColor = "var(--accent-violet)";
+          if (idx === 0) {
+            nodeColor = "var(--accent-cyan)";
+          } else if (n.node_id.includes("crisis")) {
+            nodeColor = "var(--accent-pink)";
+          } else if (n.node_id.includes("whatif")) {
+            nodeColor = "var(--accent-green)";
+          }
+          
+          return {
+            id: n.node_id,
+            label: n.decision_name,
+            parent: n.parent,
+            metrics: {
+              savings: n.metrics.monthly_savings,
+              stress: n.metrics.stress_level,
+              happiness: n.metrics.happiness,
+              career: n.metrics.career_progress
+            },
+            desc: n.description || "",
+            color: nodeColor
+          };
+        });
+        setTree(mapped);
+        
+        // Retain selection if valid, otherwise select root
+        const found = mapped.find(n => n.id === selectedNode.id);
+        setSelectedNode(found || mapped[0]);
+      }
+    } catch (err: any) {
+      setError(err.message || "Simülasyon ağacı yüklenemedi.");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    loadTree();
   }, []);
 
-  // Seçilen Düğüm Değiştiğinde AI Önerilerini Tetikle
+  // Generate Suggestions based on Selected Node
   useEffect(() => {
-    generateAiSuggestions(selectedNode);
-  }, [selectedNode]);
-
-  // AI Öneri Motoru (Simüle Edilmiş Karar Ajanı)
-  const generateAiSuggestions = (node: NodeData) => {
-    if (node.id === "node_root") {
+    if (selectedNode.id === "node_root") {
       setAiSuggestions({
-        optionA: "Şöyle de olabilir: Yarı zamanlı freelance işlerle portfolyoyu büyütmek",
-        optionB: "Böyle de olabilir: Mevcut işinde kalıp maaş artışı talep etmek",
+        optionA: "Yarı zamanlı freelance işlerle portfolyoyu büyütmek",
+        optionB: "Mevcut işinde kalıp bulut sertifikaları almak",
       });
-    } else if (node.id === "node_germany") {
+    } else if (selectedNode.id.includes("path_1")) {
       setAiSuggestions({
-        optionA: "Şöyle de olabilir: Berlin yerine yaşam maliyeti daha düşük olan Köln veya Münih'i seçmek",
-        optionB: "Böyle de olabilir: Almanya öncesi 6 ay Polonya veya Estonya'da tecrübe kazanmak",
+        optionA: "Berlin yerine yaşam maliyeti düşük Köln veya Münih'i seçmek",
+        optionB: "Almanya öncesi 6 ay Polonya veya Estonya'da tecrübe kazanmak",
       });
-    } else if (node.id === "node_germany_job") {
+    } else if (selectedNode.id.includes("path_2")) {
       setAiSuggestions({
-        optionA: "Şöyle de olabilir: Doğrudan Full-Stack veya Backend rollerini denemek",
-        optionB: "Böyle de olabilir: Startup yerine daha stabil olan kurumsal Alman firmalarını hedeflemek",
-      });
-    } else if (node.id === "node_germany_master") {
-      setAiSuggestions({
-        optionA: "Şöyle de olabilir: Master yaparken yarı zamanlı çalışıp (Werkstudent) tecrübe kazanmak",
-        optionB: "Böyle de olabilir: İngilizce eğitim veren devlet üniversitelerini araştırmak",
+        optionA: "Master yaparken yarı zamanlı çalışıp (Werkstudent) tecrübe kazanmak",
+        optionB: "İngilizce eğitim veren devlet üniversitelerini araştırmak",
       });
     } else {
       setAiSuggestions({
-        optionA: `Şöyle de olabilir: Bu adımı (${node.label}) 6 ay erteleyip birikimi %25 artırmak`,
-        optionB: "Böyle de olabilir: Sürece alanında uzman bir mentordan destek alarak başlamak",
+        optionA: "Bu adımı 6 ay erteleyip bütçeyi %25 artırmak",
+        optionB: "Alanın uzmanlarıyla LinkedIn'de networking yapmak",
       });
+    }
+  }, [selectedNode]);
+
+  // Handle Add Branch (What If)
+  const handleAddNewBranch = async (text: string) => {
+    if (!text.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const newNode = await branchSimulation(selectedNode.id, text);
+      const mappedNode: NodeData = {
+        id: newNode.node_id,
+        label: newNode.decision_name,
+        parent: newNode.parent,
+        metrics: {
+          savings: newNode.metrics.monthly_savings,
+          stress: newNode.metrics.stress_level,
+          happiness: newNode.metrics.happiness,
+          career: newNode.metrics.career_progress
+        },
+        desc: newNode.description || "",
+        color: "var(--accent-green)"
+      };
+
+      setTree(prev => [...prev, mappedNode]);
+      setSelectedNode(mappedNode);
+      setWhatIfText("");
+    } catch (err: any) {
+      setError(err.message || "Yeni dal oluşturulamadı.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Yeni Dal/Seçenek Ekleme Fonksiyonu (Çocuk düğüm olarak ekler)
-  const handleAddNewBranch = (label: string, customDesc?: string) => {
-    if (!label.trim()) return;
+  // Handle Black Swan Stress Test
+  const handleStressTest = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const newNode = await runStressTest(selectedNode.id);
+      const mappedNode: NodeData = {
+        id: newNode.node_id,
+        label: newNode.decision_name,
+        parent: newNode.parent,
+        metrics: {
+          savings: newNode.metrics.monthly_savings,
+          stress: newNode.metrics.stress_level,
+          happiness: newNode.metrics.happiness,
+          career: newNode.metrics.career_progress
+        },
+        desc: newNode.description || "",
+        color: "var(--accent-pink)"
+      };
 
-    const newId = `node_custom_${Date.now()}`;
-    const newBranch: NodeData = {
-      id: newId,
-      label: label.replace("Şöyle de olabilir: ", "").replace("Böyle de olabilir: ", ""),
-      parent: selectedNode.id,
-      metrics: {
-        savings: Math.floor(selectedNode.metrics.savings * 1.1),
-        stress: Math.min(100, Math.floor(selectedNode.metrics.stress * 1.05)),
-        happiness: Math.min(100, Math.floor(selectedNode.metrics.happiness * 1.1)),
-        career: Math.min(100, Math.floor(selectedNode.metrics.career * 1.15)),
-      },
-      desc: customDesc || `AI ve sizin tarafınızdan ortaklaşa kurgulanan "${label}" dallanma senaryosu.`,
-      color: "var(--accent-pink)",
-    };
-
-    setTree((prev) => [...prev, newBranch]);
-    setSelectedNode(newBranch);
-    setWhatIfText("");
+      setTree(prev => [...prev, mappedNode]);
+      setSelectedNode(mappedNode);
+    } catch (err: any) {
+      setError(err.message || "Stres testi çalıştırılamadı.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Aktif Seçili Yolun Breadcrumb Listesini Çıkarma (Şu An -> Almanya -> Master...)
+  // Breadcrumbs (Path from Root to Selected Node)
   const getPathBreadcrumbs = () => {
     const path: NodeData[] = [];
     let current: NodeData | undefined = selectedNode;
@@ -296,12 +192,7 @@ export default function SimulationsPage() {
     return path;
   };
 
-  // Seçili düğümün doğrudan alt seçenekleri
-  const getNextOptions = () => {
-    return tree.filter((n) => n.parent === selectedNode.id);
-  };
-
-  // Zihin Haritası İçin İlgili Derinlikteki Düğümleri Getir
+  // Nodes at Depth in Tree
   const getNodesAtDepth = (depth: number): NodeData[] => {
     const path = getPathBreadcrumbs();
     if (depth === 0) {
@@ -312,112 +203,199 @@ export default function SimulationsPage() {
     return tree.filter((n) => n.parent === ancestor.id);
   };
 
+  // Coordinates Layout Calculation
+  const layoutData = useMemo(() => {
+    const columns: NodeData[][] = [];
+    const breadcrumbs = getPathBreadcrumbs();
+    
+    // Calculate how many columns we need
+    const maxDepth = Math.max(1, breadcrumbs.length);
+    for (let d = 0; d <= maxDepth; d++) {
+      const nodes = getNodesAtDepth(d);
+      if (nodes.length > 0) {
+        columns.push(nodes);
+      }
+    }
+
+    const nodeCoords: { [id: string]: { x: number; y: number } } = {};
+    const colWidth = 260;
+    const colGap = 80;
+    
+    columns.forEach((nodes, colIdx) => {
+      const colX = colIdx * (colWidth + colGap) + 20;
+      nodes.forEach((node, nodeIdx) => {
+        // Space nodes vertically
+        const nodeY = nodeIdx * 90 + 30;
+        nodeCoords[node.id] = { x: colX, y: nodeY };
+      });
+    });
+
+    // Find connections
+    const connections: { id: string; from: { x: number; y: number }; to: { x: number; y: number }; color: string }[] = [];
+    tree.forEach((node) => {
+      if (node.parent && nodeCoords[node.parent] && nodeCoords[node.id]) {
+        connections.push({
+          id: `${node.parent}-${node.id}`,
+          from: nodeCoords[node.parent],
+          to: nodeCoords[node.id],
+          color: node.color
+        });
+      }
+    });
+
+    // Find total height and width
+    let totalHeight = 350;
+    columns.forEach(nodes => {
+      const h = nodes.length * 90 + 60;
+      if (h > totalHeight) totalHeight = h;
+    });
+
+    const totalWidth = columns.length * (colWidth + colGap) + 100;
+
+    return {
+      columns,
+      nodeCoords,
+      connections,
+      width: totalWidth,
+      height: totalHeight
+    };
+  }, [tree, selectedNode]);
+
   return (
-    <div className="page-container" style={{ maxWidth: "1400px" }}>
-      <div className="page-header">
-        <h1 className="page-title">
+    <div className="page-container" style={{ maxWidth: "1400px", padding: "40px 24px" }}>
+      <div className="page-header" style={{ marginBottom: "32px" }}>
+        <h1 className="page-title" style={{ fontSize: "2rem", fontWeight: 800 }}>
           <span className="text-gradient">Karar Ağacı & Simülasyon</span>
         </h1>
-        <p className="page-subtitle">
+        <p className="page-subtitle" style={{ color: "var(--text-secondary)", fontSize: "0.95rem" }}>
           what if? — Hayatınızın tüm dallanmalarını ve alternatif yollarını zihin haritası olarak gözden geçirin
         </p>
       </div>
 
-      {/* ── ZİHİN HARİTASI PANELİ (Mind Map Horizonal Progressive View) ────────────────── */}
+      {error && (
+        <div
+          style={{
+            padding: "12px 16px",
+            background: "rgba(255, 61, 0, 0.1)",
+            border: "1px solid rgba(255, 61, 0, 0.3)",
+            borderRadius: "var(--radius-md)",
+            color: "#ff3d00",
+            fontSize: "0.85rem",
+            marginBottom: "20px",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* ── ZİHİN HARİTASI PANELİ (SVG-Connected Mind Map) ────────────────── */}
       <div
         className="glass-card"
         style={{
           padding: "32px",
           marginBottom: "28px",
           overflowX: "auto",
+          position: "relative"
         }}
       >
-        <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "12px", color: "var(--text-primary)" }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "6px", color: "var(--text-primary)" }}>
           Zihin Haritası Görünümü (Mind Map)
         </h2>
-        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "24px" }}>
+        <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "24px" }}>
           Seçenekler soldan sağa doğru dallanarak ilerler. Bir adıma tıklayarak o yolu seçebilir ve sağa doğru yeni dallar üretebilirsiniz.
         </p>
 
-        <div style={{ display: "flex", gap: "40px", alignItems: "flex-start", minWidth: "800px" }}>
-          {/* Sütun 1: Başlangıç (Seviye 0) */}
-          <div style={mindmapColumnStyle}>
-            <div style={columnTitleStyle}>1. Adım (Başlangıç)</div>
-            {getNodesAtDepth(0).map((node) => (
-              <button
-                key={node.id}
-                type="button"
-                onClick={() => setSelectedNode(node)}
-                style={mindmapNodeStyle(selectedNode.id === node.id || getPathBreadcrumbs().some(n => n.id === node.id), selectedNode.id === node.id, node.color)}
-              >
-                <strong>{node.label}</strong>
-              </button>
+        <div 
+          ref={containerRef}
+          style={{ 
+            position: "relative", 
+            width: `${layoutData.width}px`, 
+            height: `${layoutData.height}px`,
+            minHeight: "350px",
+            transition: "all 0.3s ease"
+          }}
+        >
+          {/* SVG Connector Lines Layer */}
+          <svg 
+            style={{ 
+              position: "absolute", 
+              top: 0, 
+              left: 0, 
+              width: "100%", 
+              height: "100%",
+              pointerEvents: "none",
+              zIndex: 1
+            }}
+          >
+            <defs>
+              <linearGradient id="cyan-violet" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="var(--accent-cyan)" />
+                <stop offset="100%" stopColor="var(--accent-violet)" />
+              </linearGradient>
+            </defs>
+            {layoutData.connections.map((conn) => {
+              const x1 = conn.from.x + 240;
+              const y1 = conn.from.y + 22;
+              const x2 = conn.to.x;
+              const y2 = conn.to.y + 22;
+              const midX = (x1 + x2) / 2;
+              const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+              
+              const isSelectedPath = getPathBreadcrumbs().some(n => n.id === conn.id.split("-")[1]);
+
+              return (
+                <path
+                  key={conn.id}
+                  d={d}
+                  fill="none"
+                  stroke={isSelectedPath ? conn.color : "rgba(255, 255, 255, 0.08)"}
+                  strokeWidth={isSelectedPath ? 3.5 : 1.5}
+                  strokeDasharray={conn.color.includes("pink") ? "4 4" : "none"}
+                  style={{
+                    filter: isSelectedPath ? `drop-shadow(0 0 4px ${conn.color})` : "none",
+                    transition: "all 0.3s ease"
+                  }}
+                />
+              );
+            })}
+          </svg>
+
+          {/* HTML Nodes Layer */}
+          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 2 }}>
+            {layoutData.columns.map((column, colIdx) => (
+              <div key={colIdx}>
+                {column.map((node) => {
+                  const coords = layoutData.nodeCoords[node.id];
+                  if (!coords) return null;
+                  
+                  const isSelected = selectedNode.id === node.id;
+                  const isActivePath = getPathBreadcrumbs().some(n => n.id === node.id);
+
+                  return (
+                    <button
+                      key={node.id}
+                      type="button"
+                      onClick={() => setSelectedNode(node)}
+                      style={{
+                        position: "absolute",
+                        left: `${coords.x}px`,
+                        top: `${coords.y}px`,
+                        width: "240px",
+                        height: "44px",
+                        ...mindmapNodeStyle(isActivePath, isSelected, node.color)
+                      }}
+                    >
+                      <strong>{node.label}</strong>
+                    </button>
+                  );
+                })}
+              </div>
             ))}
           </div>
-
-          {/* Sütun 2: Seviye 1 Dallanmalar */}
-          {getPathBreadcrumbs().length > 0 && getNodesAtDepth(1).length > 0 && (
-            <>
-              <div style={connectorStyle}>──&gt;</div>
-              <div style={mindmapColumnStyle}>
-                <div style={columnTitleStyle}>2. Adım Tercihleri</div>
-                {getNodesAtDepth(1).map((node) => (
-                  <button
-                    key={node.id}
-                    type="button"
-                    onClick={() => setSelectedNode(node)}
-                    style={mindmapNodeStyle(selectedNode.id === node.id || getPathBreadcrumbs().some(n => n.id === node.id), selectedNode.id === node.id, node.color)}
-                  >
-                    <strong>{node.label}</strong>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Sütun 3: Seviye 2 Dallanmalar */}
-          {getPathBreadcrumbs().length > 1 && getNodesAtDepth(2).length > 0 && (
-            <>
-              <div style={connectorStyle}>──&gt;</div>
-              <div style={mindmapColumnStyle}>
-                <div style={columnTitleStyle}>3. Adım Tercihleri</div>
-                {getNodesAtDepth(2).map((node) => (
-                  <button
-                    key={node.id}
-                    type="button"
-                    onClick={() => setSelectedNode(node)}
-                    style={mindmapNodeStyle(selectedNode.id === node.id || getPathBreadcrumbs().some(n => n.id === node.id), selectedNode.id === node.id, node.color)}
-                  >
-                    <strong>{node.label}</strong>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Sütun 4: Seviye 3 Dallanmalar */}
-          {getPathBreadcrumbs().length > 2 && getNodesAtDepth(3).length > 0 && (
-            <>
-              <div style={connectorStyle}>──&gt;</div>
-              <div style={mindmapColumnStyle}>
-                <div style={columnTitleStyle}>4. Adım Tercihleri</div>
-                {getNodesAtDepth(3).map((node) => (
-                  <button
-                    key={node.id}
-                    type="button"
-                    onClick={() => setSelectedNode(node)}
-                    style={mindmapNodeStyle(selectedNode.id === node.id || getPathBreadcrumbs().some(n => n.id === node.id), selectedNode.id === node.id, node.color)}
-                  >
-                    <strong>{node.label}</strong>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "24px" }}>
 
         {/* Sol Sütun: Dallanmalar Ekleme ve AI Önerileri */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -460,6 +438,7 @@ export default function SimulationsPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   <button
                     type="button"
+                    disabled={loading}
                     onClick={() => handleAddNewBranch(aiSuggestions.optionA)}
                     style={suggestionButtonStyle}
                   >
@@ -467,6 +446,7 @@ export default function SimulationsPage() {
                   </button>
                   <button
                     type="button"
+                    disabled={loading}
                     onClick={() => handleAddNewBranch(aiSuggestions.optionB)}
                     style={suggestionButtonStyle}
                   >
@@ -498,6 +478,7 @@ export default function SimulationsPage() {
                   value={whatIfText}
                   onChange={(e) => setWhatIfText(e.target.value)}
                   placeholder='Örn: "Yüksek Lisans sırasında staj yapmak"'
+                  disabled={loading}
                   style={{
                     flex: 1, padding: "10px 14px",
                     background: "rgba(255,255,255,0.04)",
@@ -511,10 +492,11 @@ export default function SimulationsPage() {
                   id="btn-generate-branch"
                   className="btn-primary"
                   type="button"
+                  disabled={loading}
                   style={{ whiteSpace: "nowrap", padding: "10px 18px", fontSize: "0.85rem" }}
-                  onClick={() => handleAddNewBranch(whatIfText, `Kullanıcı tarafından eklenen '${whatIfText}' alt dalı.`)}
+                  onClick={() => handleAddNewBranch(whatIfText)}
                 >
-                  Seçenek Ekle
+                  {loading ? "Ekleniyor..." : "Seçenek Ekle"}
                 </button>
               </div>
             </div>
@@ -524,7 +506,7 @@ export default function SimulationsPage() {
 
         {/* Sağ Sütun: Düğüm Detayları */}
         <div className="glass-card" style={{ padding: "24px", height: "fit-content" }}>
-          <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, marginBottom: "6px", fontSize: "1rem" }}>
+          <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, marginBottom: "6px", fontSize: "1.1rem" }}>
             {selectedNode.label}
           </h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "22px", lineHeight: 1.55 }}>
@@ -554,11 +536,31 @@ export default function SimulationsPage() {
             </div>
           ))}
 
+          {/* Black Swan Stress Test Button */}
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={loading}
+            style={{
+              width: "100%",
+              justifyContent: "center",
+              marginTop: "20px",
+              background: "rgba(236, 72, 153, 0.12)",
+              border: "1px solid rgba(236, 72, 153, 0.3)",
+              color: "var(--accent-pink)",
+              fontSize: "0.85rem",
+              fontWeight: 600
+            }}
+            onClick={handleStressTest}
+          >
+            {loading ? "Stres Testi Sürüyor..." : "⚡ Kara Kuğu Stres Testi"}
+          </button>
+
           {selectedNode.parent && (
             <button
               type="button"
               className="btn-ghost"
-              style={{ width: "100%", justifyContent: "center", marginTop: "18px" }}
+              style={{ width: "100%", justifyContent: "center", marginTop: "14px" }}
               onClick={() => {
                 const parentNode = tree.find((n) => n.id === selectedNode.parent);
                 if (parentNode) setSelectedNode(parentNode);
@@ -575,45 +577,24 @@ export default function SimulationsPage() {
 
 // ── Yardımcı Stiller ──────────────────────────────────────────────────────────
 
-const mindmapColumnStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "12px",
-  minWidth: "220px",
-};
-
-const columnTitleStyle: React.CSSProperties = {
-  fontSize: "0.75rem",
-  color: "var(--text-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  marginBottom: "4px",
-  fontWeight: 600,
-};
-
-const connectorStyle: React.CSSProperties = {
-  alignSelf: "center",
-  color: "var(--text-muted)",
-  fontSize: "1.2rem",
-  fontWeight: "bold",
-  opacity: 0.5,
-  paddingTop: "24px",
-};
-
 function mindmapNodeStyle(isActivePath: boolean, isSelected: boolean, color: string): React.CSSProperties {
   return {
-    padding: "12px 16px",
+    padding: "10px 14px",
     background: isSelected ? "rgba(0, 229, 255, 0.08)" : "var(--glass-bg)",
     border: `1px solid ${isSelected ? "var(--accent-cyan)" : isActivePath ? color : "var(--glass-border)"}`,
     borderRadius: "var(--radius-md)",
     color: isSelected ? "var(--accent-cyan)" : isActivePath ? "var(--text-primary)" : "var(--text-secondary)",
     cursor: "pointer",
-    fontSize: "0.85rem",
+    fontSize: "0.82rem",
     textAlign: "left",
     fontFamily: "'Inter', sans-serif",
     transition: "all 0.2s ease",
     boxShadow: isSelected ? "var(--shadow-glow-cyan)" : "none",
     opacity: isActivePath ? 1 : 0.4,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    zIndex: 10
   };
 }
 
