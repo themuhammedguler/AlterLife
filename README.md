@@ -385,7 +385,66 @@ Bilgisayara Python veya Node.js bağımlılıklarını kurmadan, izole bir şeki
 ## 11. Geliştirme ve Kurulum Yol Haritası
 
 *   **1. Hafta (Kurulum & Çevre Ayarları):** Sanal ortam (venv) ve npm kurulum süreçlerinin hazırlanması. FastAPI backend ve Next.js frontend temel iskeletlerinin Docker ve venv yapılandırmaları. Sayfa yönlendirmelerinin iskelet hallerinin oluşturulması.
-*   **2. Hafta (Dallanan Karar Motoru & AI):** `/simulations/generate` ve `/simulations/{id}/branch` API'lerinin Gemini Google Search Grounding ile yazılması, karar ağacı JSON yapısının kurulması.
-*   **3. Hafta:** Google Calendar & GitHub API entegrasyonları, YouTube & Udemy API servislerinin kodlanması.
-*   **4. Hafta:** Yetenek Ağacı ve RPG Karakter Kartı UI bileşenlerinin, Karar Ağacı görsel harita arayüzünün kodlanması.
-*   **5. Hafta:** Black Swan stres testleri, Recharts performans grafikleri ve E2E testler.
+*   **2. Hafta (Dallanan Karar Motoru & AI):** `/simulations/generate` ve `/simulations/{id}/branch` API'lerinin Gemini Google Search Grounding ile yazılması, karar ağacı JSON yapısının kurulması. Multi-Agent orkestrasyonu (7 uzman ajan + OrchestratorAgent).
+*   **3. Hafta:** Google Calendar & GitHub OAuth entegrasyonları, YouTube & Udemy dinamik kaynak servisleri. Otomatik görev doğrulama (Takvim etkinliği veya GitHub commit'ine göre).
+*   **4. Hafta:** SVG-bağlantılı interaktif Yetenek Ağacı ve Karar Ağacı görsel harita arayüzleri. Black Swan stres testleri, Recharts analitik grafikleri.
+*   **5. Hafta:** E2E test senaryoları (23 test). Pydantic veri doğrulama katmanı. Firestore göç scripti.
+*   **6. Hafta (Gelişmiş Özellikler):** *(Tamamlandı)*
+    *   🎨 **AI Avatar Üretimi:** Gemini Vision ile fotoğraf analizi + DiceBear RPG avatar üretimi (`/user/avatar/generate`)
+    *   🎙️ **Günlük Sesli AI Brifing:** gTTS/Google Cloud TTS ile kişiselleştirilmiş sesli rehber (`/briefing/daily`, `/briefing/tts`)
+    *   ⚡ **Derin RPG Mekanikleri:** Energy & Focus barları, görev başına 10 Energy tüketimi, dinlenme sistemi (`/user/rest`)
+    *   🔍 **Topluluk RAG Arama:** Cosine similarity tabanlı anonim başarı yolu arama motoru (`/community/paths/search`)
+    *   🌳 **Yetenek Ağacı Düzenleyici:** Özel düğüm ekleme, silme ve canvas pozisyonu kaydetme (`/skills/custom`, `/skills/{id}/position`)
+
+---
+
+## 12. Yeni API Endpoint'leri (6. Hafta)
+
+### 12.1. Sesli Brifing (`/api/v1/briefing`)
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/briefing/daily` | Günlük AI brifing metni (orchestrator bazlı) |
+| POST | `/briefing/tts` | Metni MP3 base64'e çevirir (gTTS/Cloud TTS) |
+| GET | `/briefing/tts/status` | Aktif TTS motorunu döner |
+
+### 12.2. Topluluk RAG (`/api/v1/community`)
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/community/paths` | Tüm anonim başarı yolları |
+| POST | `/community/paths/search` | RAG ile hedef-bazlı eşleştirme |
+| POST | `/community/share` | Kendi yolunu paylaş |
+| GET | `/community/stats` | Topluluk istatistikleri |
+
+### 12.3. Özel Yetenek Düğümleri (`/api/v1/skills`)
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| POST | `/skills/custom` | Özel yetenek ekle |
+| PATCH | `/skills/{id}/position` | Canvas koordinatını kaydet |
+| DELETE | `/skills/{id}/custom` | Özel yeteneği sil |
+
+### 12.4. Kullanıcı (Yeni Endpoint'ler)
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| POST | `/user/rest` | Energy & Focus yenile (+25 XP bonus) |
+| GET | `/user/profile` | `energy`, `focus`, `max_energy`, `max_focus` alanları eklendi |
+
+---
+
+## 13. Fallback Stratejisi (API Anahtarsız Çalışma)
+
+AlterLife, tüm gelişmiş özellikler için **kademeli fallback** sistemi kullanır:
+
+| Özellik | API Key ile | API Key'siz |
+|---------|-------------|-------------|
+| Avatar üretimi | Gemini Vision + Imagen 3 | DiceBear SVG (otomatik) |
+| Sesli brifing | Google Cloud TTS | gTTS (ücretsiz, internet gerekir) |
+| RAG Arama | Pinecone / Vertex AI | In-memory cosine similarity |
+| Kaynak önerileri | YouTube Data API | Dinamik arama URL'leri |
+| Simülasyon | Gemini 1.5 Pro | Kural tabanlı fallback |
+
+> Tüm özellikler yalnızca `.env` dosyasına ilgili API anahtarı eklenerek premium moda geçer.
+

@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 import Link from "next/link";
+import { getProfile, getDailyQuests, verifyQuest, restUser } from "@/lib/api";
+import RPGStatusBar from "./components/RPGStatusBar";
+import DailyBriefing from "./components/DailyBriefing";
+
 import {
   Activity,
   ArrowUpRight,
@@ -273,6 +277,7 @@ export default function DashboardPage() {
   const [selectedGoal, setSelectedGoal] = useState(goalOptions[0]);
   const sidebarItems: SidebarItem[] = [
     { icon: Home, label: "Dashboard", href: "/dashboard", active: true },
+    { icon: BrainCircuit, label: "AI Merkez", href: "/agents", active: false },
     { icon: Rocket, label: "Simulations", href: "/simulations", active: false },
     { icon: Layers3, label: "Parallel Futures", href: "/dashboard#futures", active: false },
     { icon: MapPinned, label: "Roadmap", href: "/dashboard#roadmap", active: false },
@@ -283,6 +288,29 @@ export default function DashboardPage() {
     { icon: Settings2, label: "Settings", href: "/settings", active: false },
   ];
 
+  const [backendProfile, setBackendProfile] = useState<any>(null);
+  const [quests, setQuests] = useState<any[]>([]);
+
+  const loadDashboardData = async () => {
+    try {
+      const prof = await getProfile();
+      setBackendProfile(prof);
+      const q = await getDailyQuests();
+      setQuests(q);
+    } catch (err) {
+      console.error("Dashboard veri yükleme hatası:", err);
+    }
+  };
+
+  const handleRest = async () => {
+    try {
+      await restUser();
+      await loadDashboardData(); // Refresh energy/focus
+    } catch (err) {
+      console.error("Dinlenme hatası:", err);
+    }
+  };
+
   useEffect(() => {
     try {
       const data = window.localStorage.getItem("alterlife_onboarding");
@@ -292,7 +320,17 @@ export default function DashboardPage() {
     } catch {
       setProfile(null);
     }
+    loadDashboardData();
   }, []);
+
+  const handleVerifyQuest = async (questId: string) => {
+    try {
+      await verifyQuest(questId);
+      loadDashboardData();
+    } catch (err) {
+      console.error("Quest doğrulama hatası:", err);
+    }
+  };
 
   useEffect(() => {
     if (profile?.freeGoal) {
@@ -308,8 +346,29 @@ export default function DashboardPage() {
     [selectedGoal],
   );
 
-  const username = profile?.city ? `Sedef • ${profile.city}` : "Sedef K.";
-  const avatarInitials = profile?.age ? "SK" : "AL";
+  const dynamicFocusMetrics = useMemo(() => {
+    if (!backendProfile) {
+      return [
+        { label: "Level", value: "1", tone: "cyan" },
+        { label: "XP", value: "0 / 1000", tone: "violet" },
+        { label: "Energy", value: "84%", tone: "green" },
+        { label: "Focus", value: "71%", tone: "amber" },
+        { label: "Motivation", value: "92%", tone: "pink" },
+        { label: "Consistency", value: "88%", tone: "cyan" },
+      ];
+    }
+    return [
+      { label: "Level", value: String(backendProfile.level), tone: "cyan" },
+      { label: "XP", value: `${backendProfile.xp} / ${backendProfile.next_level_xp}`, tone: "violet" },
+      { label: "Energy", value: "84%", tone: "green" },
+      { label: "Focus", value: "71%", tone: "amber" },
+      { label: "Motivation", value: "92%", tone: "pink" },
+      { label: "Consistency", value: "88%", tone: "cyan" },
+    ];
+  }, [backendProfile]);
+
+  const username = backendProfile?.display_name || (profile?.city ? `Sedef • ${profile.city}` : "Sedef K.");
+  const avatarInitials = backendProfile?.display_name ? backendProfile.display_name.substring(0,2).toUpperCase() : (profile?.age ? "SK" : "AL");
 
   return (
     <div className={styles.shell}>
@@ -390,12 +449,16 @@ export default function DashboardPage() {
             </button>
 
             <div className={styles.profileChip}>
-              <div className={styles.profileChipAvatar}>
-                <UserRound className={styles.profileChipAvatarIcon} />
+              <div className={styles.profileChipAvatar} style={{ overflow: "hidden" }}>
+                {backendProfile?.avatar_url ? (
+                  <img src={backendProfile.avatar_url} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <UserRound className={styles.profileChipAvatarIcon} />
+                )}
               </div>
               <div>
-                <p className={styles.profileChipName}>Sedef K.</p>
-                <p className={styles.profileChipSub}>Product Strategist</p>
+                <p className={styles.profileChipName}>{backendProfile?.display_name || "Sedef K."}</p>
+                <p className={styles.profileChipSub}>{backendProfile?.role || "Product Strategist"}</p>
               </div>
             </div>
           </div>
@@ -406,18 +469,22 @@ export default function DashboardPage() {
             <div className={styles.leftHeroCard}>
               <div className={styles.aiAvatarWrap}>
                 <div className={styles.aiAvatarGlow} />
-                <div className={styles.aiAvatar}>
-                  <Bot className={styles.aiAvatarIcon} />
+                <div className={styles.aiAvatar} style={{ overflow: "hidden" }}>
+                  {backendProfile?.avatar_url ? (
+                    <img src={backendProfile.avatar_url} alt="AI Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <Bot className={styles.aiAvatarIcon} />
+                  )}
                 </div>
               </div>
               <p className={styles.leftHeroEyebrow}>AI Digital Twin</p>
-              <h2 className={styles.leftHeroTitle}>Lucid Twin Alpha</h2>
+              <h2 className={styles.leftHeroTitle}>{backendProfile?.rpgState?.title || "Lucid Twin Alpha"}</h2>
               <p className={styles.leftHeroText}>
-                Your simulation engine is learning from preferences, milestones, and scenario probability shifts.
+                Gelecek simülasyonu kararlarınız, aktif kilometre taşlarınız ve RPG gelişiminiz yapay zeka ile güncelleniyor.
               </p>
 
               <div className={styles.heroStacks}>
-                {focusMetrics.map((metric) => (
+                {dynamicFocusMetrics.map((metric) => (
                   <div key={metric.label} className={styles.metricChip} data-tone={metric.tone}>
                     <span>{metric.label}</span>
                     <strong>{metric.value}</strong>
@@ -425,6 +492,18 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
+
+            {/* RPG Energy & Focus Barları */}
+            <RPGStatusBar
+              energy={backendProfile?.energy ?? 100}
+              focus={backendProfile?.focus ?? 100}
+              maxEnergy={backendProfile?.max_energy ?? 100}
+              maxFocus={backendProfile?.max_focus ?? 100}
+              onRest={handleRest}
+            />
+
+            {/* Günlük AI Sesli Brifing */}
+            <DailyBriefing />
 
             <div className={styles.panelCard}>
               <div className={styles.panelHeaderRow}>
@@ -602,25 +681,49 @@ export default function DashboardPage() {
               <div className={styles.progressBlock}>
                 <div className={styles.progressMetaRow}>
                   <span>Quest completion</span>
-                  <span>2 / 4</span>
+                  <span>
+                    {quests.filter((q) => q.status === "completed").length} / {quests.length || 3}
+                  </span>
                 </div>
                 <div className={styles.progressBar}>
-                  <div className={styles.progressFill} style={{ width: "50%" }} />
+                  <div
+                    className={styles.progressFill}
+                    style={{
+                      width: `${
+                        quests.length
+                          ? (quests.filter((q) => q.status === "completed").length / quests.length) * 100
+                          : 0
+                      }%`,
+                    }}
+                  />
                 </div>
               </div>
 
               <div className={styles.questList}>
-                {questItems.map((quest) => (
-                  <div key={quest.title} className={styles.questItem} data-done={quest.done}>
-                    <div className={styles.questCheck}>
-                      {quest.done ? <CheckCircle2 className={styles.questCheckIcon} /> : <ShieldAlert className={styles.questCheckIcon} />}
+                {quests.map((quest) => {
+                  const isCompleted = quest.status === "completed";
+                  return (
+                    <div
+                      key={quest.quest_id}
+                      className={styles.questItem}
+                      data-done={isCompleted}
+                      onClick={() => !isCompleted && handleVerifyQuest(quest.quest_id)}
+                      style={{ cursor: isCompleted ? "default" : "pointer" }}
+                    >
+                      <div className={styles.questCheck}>
+                        {isCompleted ? (
+                          <CheckCircle2 className={styles.questCheckIcon} />
+                        ) : (
+                          <ShieldAlert className={styles.questCheckIcon} />
+                        )}
+                      </div>
+                      <div className={styles.questBody}>
+                        <p>{quest.title}</p>
+                        <span>+{quest.xp_reward} XP</span>
+                      </div>
                     </div>
-                    <div className={styles.questBody}>
-                      <p>{quest.title}</p>
-                      <span>{quest.reward}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
