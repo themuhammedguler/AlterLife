@@ -52,3 +52,6 @@ yarn-error.log*
 # Firebase
 firebase-credentials.json
 serviceAccountKey.json
+
+# Local notes that should stay out of GitHub
+ALTERLIFE_LOCAL_NOTES.md
