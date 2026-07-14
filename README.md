@@ -37,15 +37,31 @@ Kariyer değişikliği düşünenler, yurt dışına taşınma planlayanlar, gir
 
 ## Sprint 1
 
-**Sprint Notları (kısa):** Sprint boyunca ekip bir araya gelip proje konusu, ismi ve mimari kararlarını aldı; altyapı oluşturuldu ve frontend tasarımına başlandı.
+- **Backlog düzeni ve Story seçimleri**: Backlog'umuz ilk yapılacak story'lere göre düzenlenmiştir. Sprint başına tahmin edilen puan sayısını geçmeyecek şekilde sıradan seçimler yapılmaktadır. Story başına çıkan tahmin puanı, toplam puanın yarısından az tutulmuştur.
+
+Story'ler yapılacak işlere (task'lere) bölünmüştür. Miro Board'da gözüken kırmızı item'lar yapılacak işleri (task) gösterirken, mavi item'lar story'leri temsil etmektedir.
+
+- **Daily Scrum**: Daily Scrum toplantılarının zamansal sebeplerden ötürü Slack üzerinden yapılmasına karar verilmiştir. Daily Scrum toplantısı örneği jpeg veya word olarak Readme'de tarafımızdan paylaşılmaktadır: [Sprint 1 Daily Scrum Chats](https://github.com/OyunveUygulamaAkademisi/BootcampScrumTemplate/blob/main/ProjectManagement/Sprint1Documents/DailyScrumMeetingNotesSprint1.docx?raw=true)
+
+**Sprint board update**: Sprint board screenshotları:
+
+**Ürün Durumu**: Ekran görüntüleri:
+
+- **Sprint Review**: Alınan kararlar: Veritabanı oluşturması email ile toplanacak veriler için gerekli görülmüştür. Fakat bir yandan da veritabanı form sayfası için gerekli olmamıştır. O sebeple PBI bir sonraki sprint'e aktarılmıştır. Çıkan ürünün çalışmasında ve testlerinde bir problem görülmemiştir. Ekstra koyulması gereken özellikler belirlenmiştir. Sprint Review katılımcıları: ......
+- **Sprint Retrospective:**
+	- Takım içindeki görev dağılımıyla ilgili düzenleme yapılması kararı alınmıştır
+	- Tahmin puanları gözden geçirilmeli ve sprint planlama toplantılarında gerekli geri bildirimlerin developer'lar tarafından verildiğine emin olunmalı
+	- Unit test'ler için ayrılan efor/saat arttırılmalı
 
 **Tamamlanan (Done):**
+
 - Proje konusu ve isim kararı
 - Temel mimari tasarım
 - Teknoloji seçimi ve proje altyapısının temel kurulumları
 - Frontend tasarımına başlandı
 
 **Devam Eden (In Progress):**
+
 - `README.md` düzenlemesi
 - Kullanıcıların avatar oluşturabilmesi için altyapı hazırlığı
 - API bağlantılarının entegrasyonu
@@ -56,49 +72,14 @@ Kariyer değişikliği düşünenler, yurt dışına taşınma planlayanlar, gir
 - Oluşturulan agent'ların entegrasyonu
 
 **Backlog / Notlar:**
+
 - Backlog ekran görüntüsü: `AlterLife/photos/sprint1_backlog.png`
-
 **Toplantılar:**
-- Scrum ve koordinasyon toplantıları Google Meet üzerinden yapılmaktadır.
 
+- Scrum ve koordinasyon toplantıları Google Meet üzerinden yapılmaktadır.
 **Miro Board renk kullanımı (kısa):**
+
 - Turuncu: Yazılım görevleri
 - Mavi: Proje konusu / isimlendirme gibi karar görevleri
 
 ---
-
-**Backlog düzeni ve Story seçimleri:**
-- Backlog, öncelikli yapılacak story'lere göre sıralanmıştır. Sprint planlamasında, sprintte tamamlanabilecek toplam puan sınırına uyulacak şekilde story'ler seçilmiştir. Her story, uygulanabilir task'lere bölünmüştür; tahminler pratik olması için makul büyüklükte tutulur.
-
-Story/task renk eşleştirmesi (Miro):
-- Kırmızı: Task'ler (yapılacak işler)
-- Mavi: Story'ler
-
-**Daily Scrum:**
-- Günlük kısa toplantılar Google Meet üzerinden yürütülmektedir. Daily'lerde ilerleme, engeller ve bir sonraki adımlar hızla paylaşılır.
-
-**Sprint board update:**
-- Backlog ve sprint board ekran görüntüleri proje dizininde saklanmıştır: `AlterLife/photos/sprint1_backlog.png`
-
-**Ürün Durumu (kısa):**
-- Gelişen frontend arayüzü ve tasarım çalışmaları sprint sonunda görüntülenebilir. İlgili ekran görüntüleri `AlterLife/photos/` altına konulabilir.
-
-**Ürün Görselleri:**
-![Dashboard](photos/dashboard.jpeg)
-![Dashboard 2](photos/dashboard2.jpeg)
-![Simulasyon](photos/simulasyon.jpeg)
-![Yetenekler](photos/yetenekler.jpeg)
-![Topluluk](photos/topluluk.jpeg)
-![Analitik](photos/analitik.jpeg)
-
-**Sprint Review (özet):**
-- Kararlar: Veritabanı ihtiyacı değerlendirilmiş, bazı PBI'lar sonraki sprints'e taşınmıştır. Ürün testlerinde büyük bir aksama gözlemlenmemiştir.
-- Sprint Review katılımcıları: proje ekibi ve ilgili paydaşlar.
-
-**Sprint Retrospective (özet):**
-- Görev dağılımı ve planlama süreçleri gözden geçirildi; tahminlerin doğruluğu takip edilecek.
-- Unit testlere daha fazla zaman ayrılması kararlaştırıldı.
-
----
-
-Bu README örneği kısa ve proje ihtiyaçlarına uygun tutularak hazırlandı; isterseniz her bölüm daha ayrıntılı genişletilebilir.
