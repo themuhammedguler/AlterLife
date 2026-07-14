@@ -47,39 +47,26 @@ Story'ler yapılacak işlere (task'lere) bölünmüştür. Miro Board'da gözük
 
 **Ürün Durumu**: Ekran görüntüleri:
 
-- **Sprint Review**: Alınan kararlar: Veritabanı oluşturması email ile toplanacak veriler için gerekli görülmüştür. Fakat bir yandan da veritabanı form sayfası için gerekli olmamıştır. O sebeple PBI bir sonraki sprint'e aktarılmıştır. Çıkan ürünün çalışmasında ve testlerinde bir problem görülmemiştir. Ekstra koyulması gereken özellikler belirlenmiştir. Sprint Review katılımcıları: ......
-- **Sprint Retrospective:**
-	- Takım içindeki görev dağılımıyla ilgili düzenleme yapılması kararı alınmıştır
-	- Tahmin puanları gözden geçirilmeli ve sprint planlama toplantılarında gerekli geri bildirimlerin developer'lar tarafından verildiğine emin olunmalı
-	- Unit test'ler için ayrılan efor/saat arttırılmalı
+![Backlog](photos/sprint1_backlog.png)
 
-**Tamamlanan (Done):**
+**Ürün Görselleri:**
+![Dashboard](photos/dashboard.jpeg)
+![Dashboard 2](photos/dashboard2.jpeg)
+![Simulasyon](photos/simulasyon.jpeg)
+![Yetenekler](photos/yetenekler.jpeg)
+![Topluluk](photos/topluluk.jpeg)
+![Analitik](photos/analitik.jpeg)
 
-- Proje konusu ve isim kararı
-- Temel mimari tasarım
-- Teknoloji seçimi ve proje altyapısının temel kurulumları
-- Frontend tasarımına başlandı
+---
 
-**Devam Eden (In Progress):**
+**Sprint Review**
 
-- `README.md` düzenlemesi
-- Kullanıcıların avatar oluşturabilmesi için altyapı hazırlığı
-- API bağlantılarının entegrasyonu
-- Veritabanı bağlantı kontrolleri
-- Ortak Firebase altyapısının hazırlanması
-- Mevcut altyapının testlerinin yapılması
-- Frontend–Backend entegrasyonu
-- Oluşturulan agent'ların entegrasyonu
+- Alınan kararlar: Veritabanı oluşturması email ile toplanacak veriler için gerekli görülmüştür. Ancak veritabanı form sayfası bazı durumlarda gerekli bulunmamıştır; ilgili PBI bir sonraki sprint'e aktarılmıştır. Ürün testlerinde büyük bir aksama gözlemlenmemiştir. Ek özellikler planlanmıştır.
 
-**Backlog / Notlar:**
+**Sprint Retrospective**
 
-- Backlog ekran görüntüsü: `AlterLife/photos/sprint1_backlog.png`
-**Toplantılar:**
-
-- Scrum ve koordinasyon toplantıları Google Meet üzerinden yapılmaktadır.
-**Miro Board renk kullanımı (kısa):**
-
-- Turuncu: Yazılım görevleri
-- Mavi: Proje konusu / isimlendirme gibi karar görevleri
+- Takım içindeki görev dağılımıyla ilgili düzenleme yapılması kararı alındı.
+- Tahmin puanları gözden geçirilecek ve sprint planlama toplantılarında geliştiricilerden geri bildirim alınacaktır.
+- Unit test'ler için ayrılan efor/saat arttırılacaktır.
 
 ---
