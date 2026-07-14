@@ -32,6 +32,7 @@ Kariyer değişikliği düşünenler, yurt dışına taşınma planlayanlar, gir
 ## Product Backlog
 
 [Jira Backlog Board](https://alterlife129.atlassian.net/jira/software/projects/SCRUM/boards/1/backlog)
+[Miro Backlog Board](https://miro.com/app/board/uXjVH768XmA=/?share_link_id=586335526829)
 
 ---
 
