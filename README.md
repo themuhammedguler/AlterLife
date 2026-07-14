@@ -64,7 +64,7 @@ Story'ler yapılacak işlere (task'lere) bölünmüştür. Miro Board'da gözük
 
 - Kararlar: Kullanıcı verileri için bir veritabanı gerektiği teyit edildi; temel veritabanı gereksinimleri ve şema taslağı oluşturuldu. Veritabanı form sayfası bazı senaryolarda ertelendi ve ilgili PBI bir sonraki sprint'e taşındı. Frontend prototipleri çalıştırıldı ve temel akışlarda kritik bir hata bulunmadı. UI düzeltmeleri, API entegrasyonları ve avatar altyapısı öncelikli yeni PBI'lar olarak belirlendi.
 
-- Katılımcılar: Sedef Kazan (PO), Muhammed Güler (SM), Beyza Gümüş (Developer) ve ilgili paydaşlar.
+- Katılımcılar: Sedef Kazan (PO), Muhammed Güler (SM), Beyza Gümüş (Developer).
 
 **Sprint Retrospective**
 
