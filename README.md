@@ -45,11 +45,11 @@ Story'ler yapılacak işlere (task'lere) bölünmüştür. Miro Board'da gözük
 
 **Sprint board update**: Sprint board screenshotları:
 
-**Ürün Durumu**: Ekran görüntüleri:
 
 ![Backlog](photos/sprint1_backlog.png)
 
-**Ürün Görselleri:**
+**Ürün Durumu**: Ekran görüntüleri:
+
 ![Dashboard](photos/dashboard.jpeg)
 ![Dashboard 2](photos/dashboard2.jpeg)
 ![Simulasyon](photos/simulasyon.jpeg)
