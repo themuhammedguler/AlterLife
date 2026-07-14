@@ -41,7 +41,7 @@ Kariyer değişikliği düşünenler, yurt dışına taşınma planlayanlar, gir
 
 Story'ler yapılacak işlere (task'lere) bölünmüştür. Miro Board'da gözüken kırmızı item'lar yapılacak işleri (task) gösterirken, mavi item'lar story'leri temsil etmektedir.
 
-- **Daily Scrum**: Daily Scrum toplantılarının zamansal sebeplerden ötürü Slack üzerinden yapılmasına karar verilmiştir. Daily Scrum toplantısı örneği jpeg veya word olarak Readme'de tarafımızdan paylaşılmaktadır: [Sprint 1 Daily Scrum Chats](https://github.com/OyunveUygulamaAkademisi/BootcampScrumTemplate/blob/main/ProjectManagement/Sprint1Documents/DailyScrumMeetingNotesSprint1.docx?raw=true)
+- **Daily Scrum**: Daily Scrum toplantılarının zamansal sebeplerden ötürü Slack üzerinden yapılmasına karar verilmiştir. Daily Scrum toplantısı örneği jpeg veya word olarak Readme'de tarafımızdan paylaşılmaktadır: [Sprint 1 Daily Scrum Chats](https://imgur.com/a/9oJWRJ4)
 
 **Sprint board update**: Sprint board screenshotları:
 
@@ -59,14 +59,20 @@ Story'ler yapılacak işlere (task'lere) bölünmüştür. Miro Board'da gözük
 
 ---
 
+
 **Sprint Review**
 
-- Alınan kararlar: Veritabanı oluşturması email ile toplanacak veriler için gerekli görülmüştür. Ancak veritabanı form sayfası bazı durumlarda gerekli bulunmamıştır; ilgili PBI bir sonraki sprint'e aktarılmıştır. Ürün testlerinde büyük bir aksama gözlemlenmemiştir. Ek özellikler planlanmıştır.
+- Kararlar: Kullanıcı verileri için bir veritabanı gerektiği teyit edildi; temel veritabanı gereksinimleri ve şema taslağı oluşturuldu. Veritabanı form sayfası bazı senaryolarda ertelendi ve ilgili PBI bir sonraki sprint'e taşındı. Frontend prototipleri çalıştırıldı ve temel akışlarda kritik bir hata bulunmadı. UI düzeltmeleri, API entegrasyonları ve avatar altyapısı öncelikli yeni PBI'lar olarak belirlendi.
+
+- Katılımcılar: Sedef Kazan (PO), Muhammed Güler (SM), Beyza Gümüş (Developer) ve ilgili paydaşlar.
 
 **Sprint Retrospective**
 
-- Takım içindeki görev dağılımıyla ilgili düzenleme yapılması kararı alındı.
-- Tahmin puanları gözden geçirilecek ve sprint planlama toplantılarında geliştiricilerden geri bildirim alınacaktır.
-- Unit test'ler için ayrılan efor/saat arttırılacaktır.
+- Neler iyi gitti: Proje ismi, mimari ve temel altyapı hızlıca kararlaştırıldı; frontend tasarımına çabuk başlangıç yapıldı.
+- İyileştirilecekler: Görev dağılımı daha net planlanacak; tahmin puanlama süreçleri gözden geçirilecek; unit ve entegrasyon testleri için daha fazla zaman ayrılacak.
+- Eylem maddeleri:
+	1. Veritabanı PBI'sını detaylandırıp bir sonraki sprint'e ekle.
+	2. Test planı hazırlayıp test zamanlamasını belirle.
+	3. Avatar altyapısı gereksinimlerini netleştir ve API entegrasyonu için checklist oluştur.
 
 ---
