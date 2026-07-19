@@ -59,7 +59,6 @@ Miro Board üzerinde;
 Sprint sonlarında ekip üyelerinin eksik görevleri tamamlayabilmesi ve sprint değerlendirmelerinin yapılabilmesi amacıyla belirli günler boş bırakılmıştır.
 
 - **Daily Scrum**: Daily Scrum toplantılarının zamansal sebeplerden ötürü Google Meet üzerinden yapılmasına karar verilmiştir. Daily Scrum toplantılarımız ve günlük WhatsApp konuşmalarımız Imgur'da toplanmıştır.
-
 [Sprint 1 Daily Scrum Chats](https://imgur.com/a/9oJWRJ4)
 
 - **Sprint board update**: Sprint board screenshot:
