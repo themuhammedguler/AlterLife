@@ -62,7 +62,7 @@ Sprint sonlarında ekip üyelerinin eksik görevleri tamamlayabilmesi ve sprint 
 [Sprint 1 Daily Scrum Chats](https://imgur.com/a/9oJWRJ4)
 
 - **Sprint board update**: Sprint board screenshot:
-![Backlog](photos/sprint1_backlog.png)
+![Backlog](photos/AlterLife_Sprint1.jpg)
 
 <details>
 <summary><h3>Ürün Durumu: Ekran Görüntüleri</h3></summary>
