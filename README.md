@@ -38,28 +38,31 @@ Kariyer değişikliği düşünenler, yurt dışına taşınma planlayanlar, gir
 
 ## Sprint 1
 
-- **Backlog düzeni ve Story seçimleri**: Backlog'umuz ilk yapılacak story'lere göre düzenlenmiştir. Sprint başına tahmin edilen puan sayısını geçmeyecek şekilde sıradan seçimler yapılmaktadır. Story başına çıkan tahmin puanı, toplam puanın yarısından az tutulmuştur.
+- **Sprint Notları**:
 
-Story'ler yapılacak işlere (task'lere) bölünmüştür. Miro Board'da gözüken kırmızı item'lar yapılacak işleri (task) gösterirken, mavi item'lar story'leri temsil etmektedir.
+- **Sprint içinde tamamlanması tahmin edilen puan**: 100 Puan
+
+- **Puan tamamlama mantığı**: Proje boyunca tamamlanması gereken toplam 300 puanlık backlog bulunmaktadır. 3 sprinte bölündüğünde ilk sprintin 100 ile başlaması gerektiği kararlaştırıldı.
+
+- **Backlog düzeni ve Story seçimleri**: Backlog'umuz bir sonraki sprintlerin temelini atacak şekilde düzenlenmiştir. Sprint başına tahmin edilen puan sayısını geçmeyecek şekilde görevler dağıtılmıştır. Miro Board'da gözüken pembe item'lar _yazılım_, mor item'lar _ses_, açık yeşil item'lar _görsel efekt_, koyu yeşil item'lar _türü olmayan görevleri_ gösterirken, mavi item'lar _tasarım_ görevlerini temsil etmektedir. Sprint sonu günleri ekibin dinlenmesi amacıyla boş bırakılmıştır.
 
 - **Daily Scrum**: Daily Scrum toplantılarının zamansal sebeplerden ötürü Google Meet üzerinden yapılmasına karar verilmiştir. Daily Scrum toplantılarımız ve günlük Whatsapp konuşmalarımız Imgur'da toplanmıştır: [Sprint 1 Daily Scrum Chats](https://imgur.com/a/9oJWRJ4)
 
-**Sprint board update**: Sprint board screenshotları:
+- **Sprint board update**: Sprint board screenshot: 
+![Backlog](photos/sprint1_backlog.png) 
 
+<details> <summary><h3>Ürün Durumu: Ekran Görüntüleri</h3></summary>
 
-![Backlog](photos/sprint1_backlog.png)
+  ![Dashboard](photos/dashboard.jpeg)
+  ![Dashboard 2](photos/dashboard2.jpeg)
+  ![Simulasyon](photos/simulasyon.jpeg)
+  ![Yetenekler](photos/yetenekler.jpeg)
+  ![Topluluk](photos/topluluk.jpeg)
+  ![Analitik](photos/analitik.jpeg)
 
-**Ürün Durumu**: Ekran görüntüleri:
-
-![Dashboard](photos/dashboard.jpeg)
-![Dashboard 2](photos/dashboard2.jpeg)
-![Simulasyon](photos/simulasyon.jpeg)
-![Yetenekler](photos/yetenekler.jpeg)
-![Topluluk](photos/topluluk.jpeg)
-![Analitik](photos/analitik.jpeg)
+  </details>
 
 ---
-
 
 **Sprint Review**
 
@@ -75,5 +78,61 @@ Story'ler yapılacak işlere (task'lere) bölünmüştür. Miro Board'da gözük
 	1. Veritabanı PBI'sını detaylandırıp bir sonraki sprint'e ekle.
 	2. Test planı hazırlayıp test zamanlamasını belirle.
 	3. Avatar altyapısı gereksinimlerini netleştir ve API entegrasyonu için checklist oluştur.
+
+---
+
+## Sprint 2
+
+- Sprint Notları: Backlog, projenin temel özelliklerinin geliştirilmesine yönelik olarak düzenlenmiştir. Sprint başına tahmin edilen puan sayısını aşmayacak şekilde görev dağılımı yapılmış ve her User Story için belirlenen puanların toplam sprint puanının yarısından az olmasına dikkat edilmiştir.
+
+- Sprint içinde tamamlanması tahmin edilen puan: 100 Puan
+
+- Puan tamamlama mantığı: Proje boyunca tamamlanması gereken toplam 300 puanlık backlog bulunmaktadır. Backlog'un 3 sprintte tamamlanması planlandığından, Sprint 2 için hedef puan 100 olarak belirlenmiştir.
+
+- Backlog düzeni ve Story seçimleri: Backlog, projenin kullanıcıya sunacağı temel özellikler ve teknik gereksinimler göz önünde bulundurularak oluşturulmuştur. Görevler sprint puanını aşmayacak şekilde planlanmış ve ekip üyeleri arasında dağıtılmıştır.
+
+Miro Board üzerinde;
+- Mavi item'lar UI/UX tasarım görevlerini,
+- Pembe item'lar frontend geliştirme görevlerini,
+- Mor item'lar backend geliştirme görevlerini,
+- Açık yeşil item'lar yapay zeka ve simülasyon sistemlerine ait görevleri,
+- Turuncu item'lar üçüncü parti servis entegrasyonlarını,
+- Sarı item'lar veritabanı ve kimlik doğrulama işlemlerini,
+- Gri item'lar test ve deployment süreçlerini,
+- Koyu yeşil item'lar ise proje yönetimi ve dokümantasyon görevlerini temsil etmektedir.
+
+Sprint sonlarında ekip üyelerinin eksik görevleri tamamlayabilmesi, sprint değerlendirmelerinin yapılabilmesi ve gerekli iyileştirmelerin planlanabilmesi amacıyla belirli günler boş bırakılmıştır.
+
+- Daily Scrum: Daily Scrum toplantıları Google Meet üzerinden yapılmaya devam edilmiştir. Günlük toplantı notları ve ekip içi WhatsApp yazışmaları Imgur üzerinde paylaşılmıştır.
+
+[Sprint 2 - Daily Scrum Chats](https://imgur.com/a/DpFmywv)
+
+- Sprint Board Update:
+Sprint board screenshot:
+
+<details>
+<summary><h3>Ürün Durumu: Ekran Görüntüleri</h3></summary>
+
+![Dashboard](photos/dashboard.jpeg)
+![Dashboard 2](photos/dashboard2.jpeg)
+![Simulasyon](photos/simulasyon.jpeg)
+![Yetenekler](photos/yetenekler.jpeg)
+![Topluluk](photos/topluluk.jpeg)
+![Analitik](photos/analitik.jpeg)
+
+</details>
+
+- Sprint Review:
+  - Dashboard arayüzünün geliştirilmesi tamamlanmış ve kullanıcı deneyimi açısından gerekli düzenlemeler yapılmıştır.
+  - Firebase Authentication, Firestore veri yapısı ve Google OAuth entegrasyonları üzerinde çalışılmaya başlanmıştır.
+  - Frontend ve Backend arasındaki veri iletişimi test edilmiş ve gerekli entegrasyonlar sağlanmıştır.
+  - Yapay zeka ajanlarının entegrasyonu ve verdikleri yanıtlar test edilmiş, geliştirilebilecek noktalar ekip tarafından değerlendirilmiştir.
+  - Sprint kapsamında gerçekleştirilen geliştirmeler ekip üyeleri tarafından incelenmiş ve bir sonraki sprint için öncelikli görevler belirlenmiştir.
+  - Sprint Review katılımcıları: Sedef Kazan (PO), Muhammed Güler (SM), Beyza Gümüş (Developer).
+
+- Sprint Retrospective:
+  - Takım içindeki görev dağılımının daha dengeli yapılmasına karar verilmiştir.
+  - API ve servis entegrasyonlarının daha erken planlanmasının geliştirme sürecini hızlandıracağı değerlendirilmiştir.
+  - Bir sonraki sprintte AI simülasyon sistemi ve kullanıcı verilerinin işlenmesine öncelik verilmesi kararlaştırılmıştır.
 
 ---
