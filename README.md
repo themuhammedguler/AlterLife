@@ -109,6 +109,7 @@ Sprint sonlarında ekip üyelerinin eksik görevleri tamamlayabilmesi, sprint de
 
 - Sprint Board Update:
 Sprint board screenshot:
+![Backlog](photos/AlterLife_Sprint2.jpg) 
 
 <details>
 <summary><h3>Ürün Durumu: Ekran Görüntüleri</h3></summary>
