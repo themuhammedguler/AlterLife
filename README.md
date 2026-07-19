@@ -38,46 +38,75 @@ Kariyer değişikliği düşünenler, yurt dışına taşınma planlayanlar, gir
 
 ## Sprint 1
 
-- **Sprint Notları**:
+- **Sprint Notları**: Sprint 1 kapsamında projenin temel yapısının oluşturulması hedeflenmiştir. Projenin kapsamı belirlenmiş, kullanılacak teknolojilere karar verilmiş ve frontend geliştirme sürecine başlanmıştır. Ayrıca projenin mimarisi ve ilerleyen sprintlerde gerçekleştirilecek geliştirmeler için gerekli planlamalar yapılmıştır.
 
 - **Sprint içinde tamamlanması tahmin edilen puan**: 100 Puan
 
-- **Puan tamamlama mantığı**: Proje boyunca tamamlanması gereken toplam 300 puanlık backlog bulunmaktadır. 3 sprinte bölündüğünde ilk sprintin 100 ile başlaması gerektiği kararlaştırıldı.
+- **Puan tamamlama mantığı**: Proje boyunca tamamlanması gereken toplam 300 puanlık backlog bulunmaktadır. Backlog'un 3 sprinte bölünmesi planlandığından ilk sprint için hedef puan 100 olarak belirlenmiştir.
 
-- **Backlog düzeni ve Story seçimleri**: Backlog'umuz bir sonraki sprintlerin temelini atacak şekilde düzenlenmiştir. Sprint başına tahmin edilen puan sayısını geçmeyecek şekilde görevler dağıtılmıştır. Miro Board'da gözüken pembe item'lar _yazılım_, mor item'lar _ses_, açık yeşil item'lar _görsel efekt_, koyu yeşil item'lar _türü olmayan görevleri_ gösterirken, mavi item'lar _tasarım_ görevlerini temsil etmektedir. Sprint sonu günleri ekibin dinlenmesi amacıyla boş bırakılmıştır.
+- **Backlog düzeni ve Story seçimleri**: Backlog, projenin temel gereksinimlerinin belirlenmesi ve sonraki sprintlerin altyapısını oluşturacak görevler göz önünde bulundurularak hazırlanmıştır. Sprint başına tahmin edilen puan sayısını geçmeyecek şekilde görev dağılımı yapılmıştır.
 
-- **Daily Scrum**: Daily Scrum toplantılarının zamansal sebeplerden ötürü Google Meet üzerinden yapılmasına karar verilmiştir. Daily Scrum toplantılarımız ve günlük Whatsapp konuşmalarımız Imgur'da toplanmıştır: [Sprint 1 Daily Scrum Chats](https://imgur.com/a/9oJWRJ4)
+Miro Board üzerinde;
+- Mavi item'lar UI/UX tasarım görevlerini,
+- Pembe item'lar frontend geliştirme görevlerini,
+- Mor item'lar backend geliştirme görevlerini,
+- Açık yeşil item'lar yapay zeka ve simülasyon sistemlerine ait görevleri,
+- Turuncu item'lar üçüncü parti servis entegrasyonlarını,
+- Sarı item'lar veritabanı ve kimlik doğrulama işlemlerini,
+- Gri item'lar test ve deployment süreçlerini,
+- Koyu yeşil item'lar ise proje yönetimi ve dokümantasyon görevlerini temsil etmektedir.
 
-- **Sprint board update**: Sprint board screenshot: 
-![Backlog](photos/sprint1_backlog.png) 
+Sprint sonlarında ekip üyelerinin eksik görevleri tamamlayabilmesi ve sprint değerlendirmelerinin yapılabilmesi amacıyla belirli günler boş bırakılmıştır.
 
-<details> <summary><h3>Ürün Durumu: Ekran Görüntüleri</h3></summary>
+- **Daily Scrum**: Daily Scrum toplantılarının zamansal sebeplerden ötürü Google Meet üzerinden yapılmasına karar verilmiştir. Daily Scrum toplantılarımız ve günlük WhatsApp konuşmalarımız Imgur'da toplanmıştır.
 
-  ![Dashboard](photos/dashboard.jpeg)
-  ![Dashboard 2](photos/dashboard2.jpeg)
-  ![Simulasyon](photos/simulasyon.jpeg)
-  ![Yetenekler](photos/yetenekler.jpeg)
-  ![Topluluk](photos/topluluk.jpeg)
-  ![Analitik](photos/analitik.jpeg)
+[Sprint 1 Daily Scrum Chats](https://imgur.com/a/9oJWRJ4)
 
-  </details>
+- **Sprint board update**: Sprint board screenshot:
+![Backlog](photos/sprint1_backlog.png)
+
+<details>
+<summary><h3>Ürün Durumu: Ekran Görüntüleri</h3></summary>
+
+![Dashboard](photos/dashboard.jpeg)
+![Dashboard 2](photos/dashboard2.jpeg)
+![Simulasyon](photos/simulasyon.jpeg)
+![Yetenekler](photos/yetenekler.jpeg)
+![Topluluk](photos/topluluk.jpeg)
+![Analitik](photos/analitik.jpeg)
+
+</details>
 
 ---
 
-**Sprint Review**
+### Sprint Review
 
-- Kararlar: Kullanıcı verileri için bir veritabanı gerektiği teyit edildi; temel veritabanı gereksinimleri ve şema taslağı oluşturuldu. Veritabanı form sayfası bazı senaryolarda ertelendi ve ilgili PBI bir sonraki sprint'e taşındı. Frontend prototipleri çalıştırıldı ve temel akışlarda kritik bir hata bulunmadı. UI düzeltmeleri, API entegrasyonları ve avatar altyapısı öncelikli yeni PBI'lar olarak belirlendi.
+- Projenin konusu ve ismi ekip üyeleri tarafından belirlenmiştir.
+- Projede kullanılacak teknoloji yığını (Frontend, Backend, AI ve veritabanı teknolojileri) kararlaştırılmıştır.
+- AlterLife için sistem mimarisi oluşturulmuş ve geliştirme sürecinin genel planlaması yapılmıştır.
+- Projenin temel altyapısı hazırlanmış ve frontend geliştirme çalışmalarına başlanmıştır.
+- Dashboard ve temel kullanıcı arayüzü bileşenlerinin tasarımı gerçekleştirilmiştir.
+- Bir sonraki sprintte gerçekleştirilecek Firebase, API entegrasyonları ve AI agent geliştirmeleri için gerekli teknik gereksinimler belirlenmiştir.
 
-- Katılımcılar: Sedef Kazan (PO), Muhammed Güler (SM), Beyza Gümüş (Developer).
+- Sprint Review katılımcıları: Sedef Kazan (PO), Muhammed Güler (SM), Beyza Gümüş (Developer).
 
-**Sprint Retrospective**
+### Sprint Retrospective
 
-- Neler iyi gitti: Proje ismi, mimari ve temel altyapı hızlıca kararlaştırıldı; frontend tasarımına çabuk başlangıç yapıldı.
-- İyileştirilecekler: Görev dağılımı daha net planlanacak; tahmin puanlama süreçleri gözden geçirilecek; unit ve entegrasyon testleri için daha fazla zaman ayrılacak.
+- Neler iyi gitti:
+    - Projenin kapsamı ve vizyonu kısa sürede netleştirildi.
+    - Kullanılacak teknolojiler ve sistem mimarisi konusunda ekip içerisinde fikir birliğine varıldı.
+    - Frontend tasarım çalışmalarına planlanandan erken başlanabildi.
+
+- İyileştirilecekler:
+    - Görev dağılımlarının sprint başlangıcında daha detaylı planlanması.
+    - Teknik görevlerin daha küçük ve takip edilebilir alt görevlere ayrılması.
+    - Sprint planlaması sırasında geliştirme ve test süreçlerinin daha detaylı belirlenmesi.
+
 - Eylem maddeleri:
-	1. Veritabanı PBI'sını detaylandırıp bir sonraki sprint'e ekle.
-	2. Test planı hazırlayıp test zamanlamasını belirle.
-	3. Avatar altyapısı gereksinimlerini netleştir ve API entegrasyonu için checklist oluştur.
+    1. Firebase ve kimlik doğrulama sistemi için gerekli yapıların planlanması.
+    2. API ve üçüncü parti servis entegrasyonları için görevlerin oluşturulması.
+    3. AI agent mimarisinin ve veri modellerinin detaylandırılması.
+    4. Kullanıcı profil ve avatar sistemine ilişkin gereksinimlerin belirlenmesi.
 
 ---
 
@@ -104,7 +133,6 @@ Miro Board üzerinde;
 Sprint sonlarında ekip üyelerinin eksik görevleri tamamlayabilmesi, sprint değerlendirmelerinin yapılabilmesi ve gerekli iyileştirmelerin planlanabilmesi amacıyla belirli günler boş bırakılmıştır.
 
 - Daily Scrum: Daily Scrum toplantıları Google Meet üzerinden yapılmaya devam edilmiştir. Günlük toplantı notları ve ekip içi WhatsApp yazışmaları Imgur üzerinde paylaşılmıştır.
-
 [Sprint 2 - Daily Scrum Chats](https://imgur.com/a/DpFmywv)
 
 - Sprint Board Update:
