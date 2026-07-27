@@ -69,3 +69,12 @@ def test_delete_resource():
     resources = client.get("/api/v1/library/resources", headers=headers).json()
     ids = [r["resource_id"] for r in resources]
     assert rid not in ids
+
+
+def test_rejects_non_http_resource_url():
+    response = client.post(
+        "/api/v1/library/resources",
+        headers=headers,
+        json={"title": "Unsafe URL", "platform": "Other", "url": "javascript:alert(1)"},
+    )
+    assert response.status_code == 422

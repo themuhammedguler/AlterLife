@@ -14,6 +14,19 @@ Projenin calismasi icin oncelikle gerekli olan `.env` dosyalarini olusturmalisin
 cd backend
 cp .env.example .env
 ```
+`backend/.env` icinde `GROQ_API_KEY` degerini tanimlayin. Varsayilan
+metin modeli `llama-3.3-70b-versatile`, vision modeli
+`qwen/qwen3.6-27b`, canlı araştırma modeli `groq/compound` olarak
+ayarlanmistir. Anahtar yoksa uygulama
+kural tabanli fallback ile calismaya devam eder.
+
+Özgün avatar görseli üretmek isterseniz ayrıca:
+```env
+AVATAR_IMAGE_PROVIDER=openai
+OPENAI_API_KEY=...
+OPENAI_IMAGE_MODEL=gpt-image-1
+```
+Bu değerler yoksa Groq fotoğrafı analiz eder ve DiceBear avatar üretir.
 
 ### Frontend
 `frontend` klasorune gidin ve `.env.local.example` dosyasini `.env.local` olarak kopyalayin:
@@ -32,6 +45,15 @@ Ana dizindeyken (AlterLife) su komutu calistirin:
 ```bash
 docker compose up --build
 ```
+
+Docker Compose ile Groq kullanmak icin komutu calistirdiginiz terminalde
+`GROQ_API_KEY` ortam degiskenini tanimlayin veya proje kokunde bir `.env`
+dosyasina ekleyin.
+
+Docker kurulumu yerel veriyi `alterlife_data` adlı volume içinde kalıcı tutar. Frontend OAuth
+değerleri build sırasında tarayıcı paketine işlendiği için production imajı oluştururken
+`NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GITHUB_CLIENT_ID` ve
+`NEXT_PUBLIC_ENABLE_MOCK_AUTH=false` build argümanlarını sağlayın.
 
 Bu komut:
 *   Frontend servisini derler ve **http://localhost:3000** portunda baslatir.
@@ -67,7 +89,7 @@ Eger degisiklikleri anlik gormek ve Docker kullanmadan hizli gelistirme yapmak i
 
 ---
 
-### B. Frontend Kurulumu (Next.js 15)
+### B. Frontend Kurulumu (Next.js 16)
 
 1. Node.js (v20+) yuklu oldugundan emin olun.
 2. `frontend` klasorune gidin ve bagimliliklari yukleyin:
@@ -78,7 +100,12 @@ Eger degisiklikleri anlik gormek ve Docker kullanmadan hizli gelistirme yapmak i
 3. `.env.local` dosyasindaki backend API adresinin port **8001** olarak ayarlandigini dogrulayin:
    ```env
    NEXT_PUBLIC_API_URL=http://localhost:8001
+   NEXT_PUBLIC_ENABLE_MOCK_AUTH=true
    ```
+   Gercek Google/GitHub baglantilari icin ayni dosyada
+   `NEXT_PUBLIC_GOOGLE_CLIENT_ID` ve `NEXT_PUBLIC_GITHUB_CLIENT_ID`
+   degerlerini de tanimlayin. Production ortaminda mock girisi kapatin:
+   `NEXT_PUBLIC_ENABLE_MOCK_AUTH=false`.
 4. Uygulamayi port **3001** uzerinden baslatin:
    ```bash
    npm run dev -- --port 3001

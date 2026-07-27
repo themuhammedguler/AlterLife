@@ -19,6 +19,12 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    if (response.status === 401 && typeof window !== "undefined") {
+      logout();
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.assign("/login");
+      }
+    }
     throw new Error(errorData.detail || "Bir hata oluştu");
   }
 
@@ -98,10 +104,32 @@ export async function getProfile() {
   return fetchWithAuth("/api/v1/user/profile");
 }
 
-export async function generateAvatar(description: string, photoBase64?: string) {
+export async function updateProfile(payload: {
+  display_name?: string;
+  role?: string;
+  experience_years?: number;
+  daily_preferences?: {
+    day_type?: "light" | "normal" | "busy";
+    best_focus_time?: "morning" | "afternoon" | "evening" | "night";
+    mood?: "low" | "steady" | "playful" | "high";
+    available_minutes?: number;
+    include_social?: boolean;
+  };
+}) {
+  return fetchWithAuth("/api/v1/user/profile", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAccount() {
+  return fetchWithAuth("/api/v1/user/account", { method: "DELETE" });
+}
+
+export async function generateAvatar(description: string, photoBase64?: string, photoMimeType = "image/jpeg") {
   return fetchWithAuth("/api/v1/user/avatar/generate", {
     method: "POST",
-    body: JSON.stringify({ description, photo_base64: photoBase64 }),
+    body: JSON.stringify({ description, photo_base64: photoBase64, photo_mime_type: photoMimeType }),
   });
 }
 
@@ -134,10 +162,31 @@ export async function runStressTest(nodeId: string) {
   });
 }
 
+export async function getBranchActionPlan(nodeId: string, friendCode?: string) {
+  const userId = typeof window !== "undefined" ? localStorage.getItem("alterlife_user_id") || "dev_user_001" : "dev_user_001";
+  return fetchWithAuth(`/api/v1/simulations/sim_${userId}/nodes/${nodeId}/action-plan`, {
+    method: "POST",
+    body: JSON.stringify({ friend_code: friendCode || undefined }),
+  });
+}
+
 // ── Quests ───────────────────────────────────────────────────────────────────
 
 export async function getDailyQuests() {
   return fetchWithAuth("/api/v1/quests/daily");
+}
+
+export async function planDailyQuests(payload: {
+  day_type: "light" | "normal" | "busy";
+  best_focus_time: "morning" | "afternoon" | "evening" | "night";
+  mood: "low" | "steady" | "playful" | "high";
+  available_minutes: number;
+  include_social: boolean;
+}) {
+  return fetchWithAuth("/api/v1/quests/daily/plan", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function verifyQuest(questId: string) {
@@ -210,6 +259,41 @@ export async function getGithubStatus() {
   return fetchWithAuth("/api/v1/integrations/github/status");
 }
 
+export async function connectCalendar(code: string, redirectUri: string) {
+  return fetchWithAuth("/api/v1/integrations/calendar/connect", {
+    method: "POST",
+    body: JSON.stringify({ code, redirect_uri: redirectUri }),
+  });
+}
+
+export async function connectGithub(code: string, redirectUri: string) {
+  return fetchWithAuth("/api/v1/integrations/github/connect", {
+    method: "POST",
+    body: JSON.stringify({ code, redirect_uri: redirectUri }),
+  });
+}
+
+export async function disconnectCalendar() {
+  return fetchWithAuth("/api/v1/integrations/calendar", { method: "DELETE" });
+}
+
+export async function createCalendarQuestEvent(payload: {
+  quest_id: string;
+  title: string;
+  description?: string;
+  time_slot?: string;
+  duration_minutes?: number;
+}) {
+  return fetchWithAuth("/api/v1/integrations/calendar/quest-event", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function disconnectGithub() {
+  return fetchWithAuth("/api/v1/integrations/github", { method: "DELETE" });
+}
+
 // ── Agents ────────────────────────────────────────────────────────────────────
 
 export async function runOrchestrator() {
@@ -254,11 +338,41 @@ export async function getCommunityPaths(limit = 20) {
   return fetchWithAuth(`/api/v1/community/paths?limit=${limit}`);
 }
 
+export async function getCommunityOverview() {
+  return fetchWithAuth("/api/v1/community/overview");
+}
+
 export async function searchCommunityPaths(goal: string, topK = 4) {
   return fetchWithAuth("/api/v1/community/paths/search", {
     method: "POST",
     body: JSON.stringify({ goal, top_k: topK }),
   });
+}
+
+export async function getCommunityCohort(pathId: string) {
+  return fetchWithAuth(`/api/v1/community/paths/${pathId}/cohort`);
+}
+
+export async function joinCommunityPath(pathId: string, branch?: string) {
+  return fetchWithAuth(`/api/v1/community/paths/${pathId}/join`, {
+    method: "POST",
+    body: JSON.stringify({ branch }),
+  });
+}
+
+export async function createCommunityInvite(pathId: string, branch?: string) {
+  return fetchWithAuth(`/api/v1/community/paths/${pathId}/invite`, {
+    method: "POST",
+    body: JSON.stringify({ branch }),
+  });
+}
+
+export async function resolveCommunityInvite(code: string) {
+  return fetchWithAuth(`/api/v1/community/invites/${encodeURIComponent(code)}`);
+}
+
+export async function getMyCommunityPaths() {
+  return fetchWithAuth("/api/v1/community/me/paths");
 }
 
 export async function shareCommunityPath(goal: string, steps: string[], outcome: string, tags: string[]) {
@@ -297,4 +411,79 @@ export async function updateSkillPosition(skillId: string, canvasX: number, canv
 
 export async function deleteCustomSkill(skillId: string) {
   return fetchWithAuth(`/api/v1/skills/${skillId}/custom`, { method: "DELETE" });
+}
+
+// ── Coach Center ─────────────────────────────────────────────────────────────
+
+export async function getActiveGoal() {
+  return fetchWithAuth("/api/v1/coach/active-goal");
+}
+
+export async function setActiveGoal(payload: { simulation_id: string; node_id: string }) {
+  return fetchWithAuth("/api/v1/coach/active-goal", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getRiskRadar() {
+  return fetchWithAuth("/api/v1/coach/risk-radar");
+}
+
+export async function createWeeklyReview(payload: {
+  wins: string[];
+  blockers: string[];
+  energy_score: number;
+  next_week_focus?: string;
+}) {
+  return fetchWithAuth("/api/v1/coach/weekly-review", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function mentorChat(message: string, tone: "friendly" | "strict" | "playful" = "friendly") {
+  return fetchWithAuth("/api/v1/coach/mentor/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, tone }),
+  });
+}
+
+export async function addDecisionJournal(payload: {
+  decision: string;
+  expectation: string;
+  confidence: number;
+  revisit_in_days: number;
+}) {
+  return fetchWithAuth("/api/v1/coach/decision-journal", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getDecisionJournal() {
+  return fetchWithAuth("/api/v1/coach/decision-journal");
+}
+
+export async function getMilestoneTimeline() {
+  return fetchWithAuth("/api/v1/coach/timeline");
+}
+
+export async function getRealityCheck() {
+  return fetchWithAuth("/api/v1/coach/reality-check");
+}
+
+export async function exportCoachReport() {
+  return fetchWithAuth("/api/v1/coach/report");
+}
+
+export async function getNotifications() {
+  return fetchWithAuth("/api/v1/coach/notifications");
+}
+
+export async function markNotificationRead(notificationId: string) {
+  return fetchWithAuth("/api/v1/coach/notifications/read", {
+    method: "POST",
+    body: JSON.stringify({ notification_id: notificationId }),
+  });
 }

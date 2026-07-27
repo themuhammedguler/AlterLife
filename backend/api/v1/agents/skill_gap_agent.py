@@ -1,10 +1,10 @@
 """
 SkillGapAgent – Kritik beceri boşluğu analizi, sıralı öğrenme önerileri
 """
-import os, json
 from typing import Dict, Any, List
+from api.v1.services.ai_service import call_groq_json, is_groq_configured
 
-GEMINI_SYSTEM = "Sen yazılım ve teknoloji eğitimi alanında uzman bir kariyer danışmanısın. Skill gap analizini somut ve önceliklendirilmiş biçimde sun. SADECE JSON döndür. Türkçe yaz."
+AI_SYSTEM = "Sen yazılım ve teknoloji eğitimi alanında uzman bir kariyer danışmanısın. Skill gap analizini somut ve önceliklendirilmiş biçimde sun. SADECE JSON döndür. Türkçe yaz."
 
 URGENCY_MAP = {"critical": "🔴 Kritik", "high": "🟠 Yüksek", "medium": "🟡 Orta", "low": "🟢 Düşük"}
 
@@ -15,14 +15,8 @@ def analyze_skill_gaps(user_profile: Dict[str, Any], profile_analysis: Dict[str,
         unlocked = {n["name"].lower() for n in skill_nodes if n.get("level", 0) >= 2}
         known = known | unlocked
 
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash",
-                generation_config={"response_mime_type": "application/json"},
-                system_instruction=GEMINI_SYSTEM)
             prompt = f"""
 Kullanıcı Profili:
 - Hedef: {goal}
@@ -55,12 +49,18 @@ Skill gap analizi yap ve şunu döndür:
   "quick_win": "Bu hafta 1 saatte öğrenebileceğin şey"
 }}
 """
-            response = model.generate_content(prompt)
-            result = json.loads(response.text)
-            result["source"] = "gemini"
+            result = call_groq_json(
+                prompt,
+                AI_SYSTEM,
+                required_keys=(
+                    "total_gaps_found", "critical_gaps", "learning_sequence",
+                    "total_est_weeks", "study_plan", "quick_win",
+                ),
+            )
+            result["source"] = "groq"
             return result
         except Exception as e:
-            print(f"[SkillGapAgent] Gemini failed: {e}")
+            print(f"[SkillGapAgent] Groq failed: {e}")
 
     # Heuristic mock
     goal_lower = goal.lower()

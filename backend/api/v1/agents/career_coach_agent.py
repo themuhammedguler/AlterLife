@@ -1,10 +1,10 @@
 """
 CareerCoachAgent – Kişisel kariyer yol haritası, skill gap analizi, sıralı öğrenme planı
 """
-import os, json
 from typing import Dict, Any, List
+from api.v1.services.ai_service import call_groq_research_json, is_groq_configured
 
-GEMINI_SYSTEM = "Sen Türkiye ve uluslararası teknoloji sektörü için kariyer koçusun. Kişiselleştirilmiş, somut ve uygulanabilir tavsiyeler ver. SADECE JSON döndür."
+AI_SYSTEM = "Sen Türkiye ve uluslararası teknoloji sektörü için kariyer koçusun. Kişiselleştirilmiş, somut ve uygulanabilir tavsiyeler ver. SADECE JSON döndür."
 
 SKILL_PREREQUISITES = {
     "cloud_architect": ["AWS Fundamentals", "Docker", "Linux", "Networking"],
@@ -39,14 +39,8 @@ def create_career_roadmap(user_profile: Dict[str, Any], profile_analysis: Dict[s
         unlocked_skills = [n["name"] for n in skill_nodes if n.get("is_unlocked") and n.get("level", 0) >= 1]
         known_skills = list(set(known_skills + unlocked_skills))
 
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash",
-                generation_config={"response_mime_type": "application/json"},
-                system_instruction=GEMINI_SYSTEM)
             prompt = f"""
 Kullanıcı Bilgileri:
 - Hedef: {goal}
@@ -76,12 +70,19 @@ Few-shot örnek çıktı:
 
 Kullanıcı için bu formatı doldur:
 """
-            response = model.generate_content(prompt)
-            result = json.loads(response.text)
-            result["source"] = "gemini"
+            result = call_groq_research_json(
+                prompt,
+                AI_SYSTEM,
+                required_keys=(
+                    "target_role", "skill_gap", "roadmap_phases",
+                    "quick_start_action", "estimated_total_weeks",
+                    "job_market_insight", "linkedin_keywords",
+                ),
+            )
+            result["source"] = "groq"
             return result
         except Exception as e:
-            print(f"[CareerCoach] Gemini failed: {e}")
+            print(f"[CareerCoach] Groq failed: {e}")
 
     # Mock fallback
     target_role = identify_target_role(goal)

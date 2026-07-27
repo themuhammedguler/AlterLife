@@ -67,3 +67,54 @@ def test_stress_test():
     assert data["parent"] == "node_root"
     assert "metrics" in data
     assert len(data["milestones"]) > 0
+
+
+def test_branch_action_plan_includes_resources_and_shared_code():
+    headers = {"Authorization": "Bearer mock_token_testuser"}
+    response = client.post(
+        "/api/v1/simulations/sim_usr_testuser/nodes/node_root/action-plan",
+        headers=headers,
+        json={"friend_code": "BERLIN42"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["node_id"] == "node_root"
+    assert data["realism_score"] >= 35
+    assert len(data["steps"]) >= 4
+    assert len(data["resources"]) >= 3
+    assert data["shared_path"]["code"]
+    assert data["shared_path"]["divergence_options"]
+    assert data["done_so_far"]
+
+
+def test_branch_action_plan_is_private_to_owner():
+    attacker_headers = {"Authorization": "Bearer mock_token_attacker"}
+    response = client.post(
+        "/api/v1/simulations/sim_usr_testuser/nodes/node_root/action-plan",
+        headers=attacker_headers,
+        json={},
+    )
+    assert response.status_code == 403
+
+
+def test_simulation_is_private_to_owner():
+    attacker_headers = {"Authorization": "Bearer mock_token_attacker"}
+    attempts = (
+        ("get", "/api/v1/simulations/sim_usr_testuser/tree", None),
+        (
+            "post",
+            "/api/v1/simulations/sim_usr_testuser/branch",
+            {"parent_node_id": "node_root", "decision_text": "Yetkisiz dal denemesi"},
+        ),
+        ("post", "/api/v1/simulations/sim_usr_testuser/stress-test?node_id=node_root", None),
+    )
+    for method, path, payload in attempts:
+        request = getattr(client, method)
+        response = request(path, headers=attacker_headers, **({"json": payload} if payload else {}))
+        assert response.status_code == 403
+
+
+def test_simulation_input_limits():
+    headers = {"Authorization": "Bearer mock_token_testuser"}
+    response = client.post("/api/v1/simulations/generate", headers=headers, json={"target": "x"})
+    assert response.status_code == 422

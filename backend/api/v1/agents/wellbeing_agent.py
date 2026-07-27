@@ -1,10 +1,10 @@
 """
 WellbeingAgent – Burnout riski, stres analizi, kişiselleştirilmiş iyileşme önerileri
 """
-import os, json
 from typing import Dict, Any
+from api.v1.services.ai_service import call_groq_json, is_groq_configured
 
-GEMINI_SYSTEM = "Sen pozitif psikoloji ve iş-yaşam dengesi uzmanısın. Empati ile yaklaş, somut ve uygulanabilir öneriler sun. SADECE JSON döndür. Türkçe yaz."
+AI_SYSTEM = "Sen pozitif psikoloji ve iş-yaşam dengesi uzmanısın. Empati ile yaklaş, somut ve uygulanabilir öneriler sun. SADECE JSON döndür. Türkçe yaz."
 
 def check_wellbeing(user_profile: Dict[str, Any], profile_analysis: Dict[str, Any]) -> Dict[str, Any]:
     stress = user_profile.get("stress_level", 40)
@@ -18,14 +18,8 @@ def check_wellbeing(user_profile: Dict[str, Any], profile_analysis: Dict[str, An
     burnout_score = min(100, max(0, stress * 0.5 + (100 - happiness) * 0.3 + max(0, 7 - active_days) * 3))
     risk_level = "Kritik" if burnout_score >= 70 else "Yüksek" if burnout_score >= 50 else "Orta" if burnout_score >= 30 else "Düşük"
 
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash",
-                generation_config={"response_mime_type": "application/json"},
-                system_instruction=GEMINI_SYSTEM)
             prompt = f"""
 Kullanıcı Sağlık Metrikleri:
 - Stres Seviyesi: {stress}/100
@@ -44,12 +38,18 @@ Bu kullanıcı için kapsamlı bir iyilik analizi yap:
 - weekly_ritual: Bu kullanıcı için 7 günlük refah ritüeli öner
 - motivational_message: Empati dolu, kişiye özel motivasyon mesajı
 """
-            response = model.generate_content(prompt)
-            result = json.loads(response.text)
-            result["source"] = "gemini"
+            result = call_groq_json(
+                prompt,
+                AI_SYSTEM,
+                required_keys=(
+                    "burnout_score", "risk_level", "risk_explanation",
+                    "recovery_recommendations", "energy_audit", "weekly_ritual",
+                ),
+            )
+            result["source"] = "groq"
             return result
         except Exception as e:
-            print(f"[WellbeingAgent] Gemini failed: {e}")
+            print(f"[WellbeingAgent] Groq failed: {e}")
 
     # Mock fallback
     recs_by_risk = {

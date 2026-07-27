@@ -1,6 +1,10 @@
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime, timezone
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 class UserProfile(BaseModel):
     role: str = "Belirlenmedi"
@@ -20,20 +24,18 @@ class UserRPGState(BaseModel):
     max_focus: int = 100
 
 class UserDoc(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     userId: str
     email: str
     displayName: Optional[str] = None
-    createdAt: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
-    updatedAt: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+    createdAt: str = Field(default_factory=utc_now_iso)
+    updatedAt: str = Field(default_factory=utc_now_iso)
     profile: UserProfile = Field(default_factory=UserProfile)
     rpgState: UserRPGState = Field(default_factory=UserRPGState)
     level: int = 1
     xp: int = 0
     next_level_xp: int = 1000
-
-    class Config:
-        extra = "allow" # allow extra fields for flexible DB documents
-
 
 class SimulationNode(BaseModel):
     node_id: str
@@ -46,18 +48,19 @@ class SimulationNode(BaseModel):
     is_terminal: bool = False
 
 class SimulationDoc(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     simulation_id: str
     user_id: str
     initial_target: str
     nodes: List[SimulationNode] = Field(default_factory=list)
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
-    updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
-
-    class Config:
-        extra = "allow"
+    created_at: str = Field(default_factory=utc_now_iso)
+    updated_at: str = Field(default_factory=utc_now_iso)
 
 
 class QuestDoc(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     quest_id: str
     title: str
     description: str
@@ -66,14 +69,12 @@ class QuestDoc(BaseModel):
     status: str = "pending" # pending, completed, failed
     verified_by: str = "manual"
     resource_link: Optional[str] = None
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+    created_at: str = Field(default_factory=utc_now_iso)
     completed_at: Optional[str] = None
 
-    class Config:
-        extra = "allow"
-
-
 class LibraryResourceDoc(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     resource_id: str
     title: str
     platform: str
@@ -81,14 +82,12 @@ class LibraryResourceDoc(BaseModel):
     thumbnail_url: Optional[str] = None
     skill_tags: List[str] = Field(default_factory=list)
     status: str = "in_progress" # in_progress, completed
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+    created_at: str = Field(default_factory=utc_now_iso)
     completed_at: Optional[str] = None
 
-    class Config:
-        extra = "allow"
-
-
 class SkillNodeDoc(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     skill_id: str
     name: str
     level: int = 1
@@ -101,15 +100,10 @@ class SkillNodeDoc(BaseModel):
     is_unlocked: bool = False
     status: str = "locked" # locked, available, learning, mastered
 
-    class Config:
-        extra = "allow"
-
-
 class AnalyticsEventDoc(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     event_id: str
     type: str # e.g. xp_gain, quest_complete, simulation_branch
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+    timestamp: str = Field(default_factory=utc_now_iso)
     details: Dict[str, Any] = Field(default_factory=dict)
-
-    class Config:
-        extra = "allow"

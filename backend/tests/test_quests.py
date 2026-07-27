@@ -43,3 +43,24 @@ def test_verify_quest():
     assert "new_total_xp" in data
     assert "level_up" in data
 
+
+def test_daily_flow_planning_adds_life_context():
+    headers = {"Authorization": "Bearer mock_token_flowuser"}
+    response = client.post(
+        "/api/v1/quests/daily/plan",
+        headers=headers,
+        json={
+            "day_type": "busy",
+            "best_focus_time": "evening",
+            "mood": "playful",
+            "available_minutes": 45,
+            "include_social": True,
+        },
+    )
+    assert response.status_code == 200
+    quests = response.json()
+    assert len(quests) == 3
+    assert all(q["time_slot"] for q in quests)
+    assert all(q["duration_minutes"] for q in quests)
+    assert any(q["fun_modifier"] == "mini boss" for q in quests)
+    assert all(q["life_context"] for q in quests)

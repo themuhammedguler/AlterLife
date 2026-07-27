@@ -35,7 +35,7 @@ Bu doküman, **Alter Life** (Hayat İçin Dijital İkiz ve RPG Karar Motoru) pro
 
 *   **Dallanan Gelecek Simülatörü ("What If" Engine):** Kullanıcı sadece profesyonel hedefler değil, hayata dair anlık veya stratejik tüm yol ayrımlarını simüle edebilir. ("Almanya'ya gidersem ne olur?", "Yüksek lisans yaparsam?", "Cloud'a geçersem?", "Şirket değiştirirsem?", "Aşık olursam ne olur?").
 *   **Arayüz Estetiği:** Koyu mod ağırlıklı, modern neon/glassmorphism (cam efekti) çizgiler barındıran, hem analitik netliği (grafikler) hem de RPG hissini (yetenek ağaçları, XP barları) uyum içinde yaşatan premium bir tasarım.
-*   **Arama Temelli Kararlar:** Sistem, kullanıcıya yönlendirme yaparken sadece statik veri tabanına değil; **canlı web araştırmalarına (Gemini Google Search Grounding, YouTube Data API ve Udemy Affiliate API)** dayanarak gerçek zamanlı kurs, video, makale ve dokümantasyon önerir.
+*   **Arama Temelli Kararlar:** Sistem, kullanıcıya yönlendirme yaparken sadece statik veri tabanına değil; **canlı web araştırmalarına (Groq, YouTube Data API ve Udemy Affiliate API)** dayanarak gerçek zamanlı kurs, video, makale ve dokümantasyon önerir.
 
 ---
 
@@ -52,8 +52,8 @@ Kullanıcı sisteme kayıt olduğunda, geleneksel formlar yerine bir RPG oyununu
 ### Aşama 2.2: AI Karakter Avatarı Oluşturma (Görsel Özelleştirme)
 Kullanıcı panellerde kendini temsil edecek RPG karakterini iki şekilde tasarlayabilir:
 *   **Seçenek 1: Fiziksel Özellik Betimlemesi (Text-to-Image):** Kullanıcı saç rengi, göz rengi, tarzı ve aksesuarlarını yazar (Örn: "Mavi gözlü, kısa siyah saçlı, cyberpunk gözlüğü takan, kapüşonlu hırka giyen bir yazılımcı").
-*   **Seçenek 2: Fotoğraf Yükleme (Image-to-Image / Vision):** Kullanıcı kendi fotoğrafını yükler. **Gemini 1.5 Pro / Flash (Vision)** fotoğrafı analiz ederek kullanıcının yüz hatlarını, saç tarzını ve giyimini betimleyen detaylı bir prompt hazırlar.
-*   **Üretim Motoru (Avatar Generator):** Çıkan metinsel prompt, sistem tarafından belirlenen sanatsal stile (örn. *Cyberpunk Glassmorphism Illustration* veya *Futuristic Pixel Art*) uydurulacak şekilde harmanlanır ve bir Görsel Üretim Modeli (örn. Imagen 3 veya DALL-E) ile **RPG karakter görseline** dönüştürülür. Üretilen avatar görseli Firebase Storage'a yüklenir.
+*   **Seçenek 2: Fotoğraf Yükleme (Vision):** Kullanıcı kendi fotoğrafını yükler. **Groq Vision** fotoğrafı analiz ederek kullanıcının yüz hatlarını, saç tarzını ve giyimini betimleyen detaylı bir prompt hazırlar.
+*   **Üretim Motoru (Avatar Generator):** Çıkan metinsel prompt, sistem tarafından belirlenen sanatsal stile uydurulur. `AVATAR_IMAGE_PROVIDER=openai` yapılandırıldığında OpenAI Images ile özgün RPG karakteri üretilir; sağlayıcı yoksa DiceBear avatar kullanılır.
 
 ### Aşama 2.3: İlk Serüven Tanımlama
 *   **Seçenek A: Şablon Senaryolar (Hazır Questler):** "2 yıl içinde Berlin'de Senior Cloud Engineer olmak."
@@ -104,7 +104,7 @@ Kullanıcı panellerde kendini temsil edecek RPG karakterini iki şekilde tasarl
 Kullanıcının belirlediği hedeflere ve dallanan kararlara yönelik ilerlemesi, statik bir takvim takibi yerine oyunlaştırılmış bir **RPG Quest Engine** ile yönetilir.
 
 ### 4.1. Görev Üretim Mantığı (Daily Quest Generation)
-Yapay zeka (Quest Generator Agent - Gemini 1.5 Flash) her gece veya yeni bir karar dalı oluşturulduğunda şu mantıkla görev üretir:
+Yapay zeka (Quest Generator Agent - Groq) her gece veya yeni bir karar dalı oluşturulduğunda şu mantıkla görev üretir:
 1.  **Aktif Kilometre Taşı Analizi:** Kullanıcının seçili karar dalındaki mevcut aşaması (örn. "AWS Cloud Foundations") ve odaklandığı yetenek (örn. "AWS VPC") belirlenir.
 2.  **Canlı Arama & Kaynak İlişkilendirme:** YouTube ve Udemy API'lerinden bu yeteneğe uygun en popüler 3 kaynak taranır.
 3.  **Mikro Görev Üretimi:** Büyük hedef 3 adet günlük mikro göreve bölünür:
@@ -141,12 +141,12 @@ graph TD
     end
 
     %% Ajan ve AI Katmanı
-    subgraph AI [AI Orchestration - LangGraph & Gemini]
+    subgraph AI [AI Orchestration - LangGraph & Groq]
         Orchestrator[Orchestrator Agent]
-        SimAgent[Simulation Agent - Gemini 1.5 Pro]
-        StressAgent[Black Swan Agent - Gemini 1.5 Flash]
-        QuestAgent[RPG Quest Agent - Gemini 1.5 Flash]
-        GeminiSearch[Gemini Google Search Grounding]
+        SimAgent[Simulation Agent - Groq]
+        StressAgent[Black Swan Agent - Groq]
+        QuestAgent[RPG Quest Agent - Groq]
+        GroqSearch[Groq / Harici Web Arama]
         VectorSearch[Vertex AI Vector Search / RAG]
     end
 
@@ -167,9 +167,9 @@ graph TD
     Orchestrator --> StressAgent
     Orchestrator --> QuestAgent
 
-    SimAgent -->|Search Grounding| GeminiSearch
+    SimAgent -->|Search Grounding| GroqSearch
     SimAgent -->|Semantic Search| VectorSearch
-    QuestAgent -->|Search Grounding| GeminiSearch
+    QuestAgent -->|Search Grounding| GroqSearch
     
     SyncWorker -->|Fetch Events| CalendarAPI
     SyncWorker -->|Fetch Commits| GitHubAPI
@@ -243,7 +243,7 @@ Bilgisayara Python veya Node.js bağımlılıklarını kurmadan, izole bir şeki
 *   **Udemy Course Search API:** Profesyonel eğitim tavsiyelerini fiyat, puan ve bağlantı URL'si ile birlikte çekmek.
 *   **Google Calendar API (OAuth 2.0):** Kullanıcının takviminden çalışma zamanlarını çekip RPG yetenek gelişimine ve simülasyon olasılıklarına yansıtmak.
 *   **GitHub API:** Kullanıcının kod yazma sıklığını ve commit'lerini kontrol ederek günlük görevleri otomatik onaylamak.
-*   **Gemini Google Search Grounding & Vision:** Canlı web araştırmaları ve fotoğraf analiz altyapısı.
+*   **Groq & Vision:** Yapılandırılmış AI çıktıları ve fotoğraf analiz altyapısı.
 
 ---
 
@@ -385,16 +385,28 @@ Bilgisayara Python veya Node.js bağımlılıklarını kurmadan, izole bir şeki
 ## 11. Geliştirme ve Kurulum Yol Haritası
 
 *   **1. Hafta (Kurulum & Çevre Ayarları):** Sanal ortam (venv) ve npm kurulum süreçlerinin hazırlanması. FastAPI backend ve Next.js frontend temel iskeletlerinin Docker ve venv yapılandırmaları. Sayfa yönlendirmelerinin iskelet hallerinin oluşturulması.
-*   **2. Hafta (Dallanan Karar Motoru & AI):** `/simulations/generate` ve `/simulations/{id}/branch` API'lerinin Gemini Google Search Grounding ile yazılması, karar ağacı JSON yapısının kurulması. Multi-Agent orkestrasyonu (7 uzman ajan + OrchestratorAgent).
+*   **2. Hafta (Dallanan Karar Motoru & AI):** `/simulations/generate` ve `/simulations/{id}/branch` API'lerinin Groq ile yazılması, karar ağacı JSON yapısının kurulması. Multi-Agent orkestrasyonu (7 uzman ajan + OrchestratorAgent).
 *   **3. Hafta:** Google Calendar & GitHub OAuth entegrasyonları, YouTube & Udemy dinamik kaynak servisleri. Otomatik görev doğrulama (Takvim etkinliği veya GitHub commit'ine göre).
 *   **4. Hafta:** SVG-bağlantılı interaktif Yetenek Ağacı ve Karar Ağacı görsel harita arayüzleri. Black Swan stres testleri, Recharts analitik grafikleri.
 *   **5. Hafta:** E2E test senaryoları (23 test). Pydantic veri doğrulama katmanı. Firestore göç scripti.
 *   **6. Hafta (Gelişmiş Özellikler):** *(Tamamlandı)*
-    *   🎨 **AI Avatar Üretimi:** Gemini Vision ile fotoğraf analizi + DiceBear RPG avatar üretimi (`/user/avatar/generate`)
+    *   🎨 **AI Avatar Üretimi:** Groq Vision ile fotoğraf analizi + DiceBear RPG avatar üretimi (`/user/avatar/generate`)
     *   🎙️ **Günlük Sesli AI Brifing:** gTTS/Google Cloud TTS ile kişiselleştirilmiş sesli rehber (`/briefing/daily`, `/briefing/tts`)
     *   ⚡ **Derin RPG Mekanikleri:** Energy & Focus barları, görev başına 10 Energy tüketimi, dinlenme sistemi (`/user/rest`)
     *   🔍 **Topluluk RAG Arama:** Cosine similarity tabanlı anonim başarı yolu arama motoru (`/community/paths/search`)
     *   🌳 **Yetenek Ağacı Düzenleyici:** Özel düğüm ekleme, silme ve canvas pozisyonu kaydetme (`/skills/custom`, `/skills/{id}/position`)
+*   **7. Hafta (Güvenlik & Oturum):** *(Tamamlandı)*
+    *   PBKDF2-SHA256 yerel şifre saklama ve gerçek şifre doğrulama
+    *   Production ortamında anonim erişim ve mock token engeli
+    *   Frontend korumalı rotalar, kayıt, çıkış ve Google Identity Services
+*   **8. Hafta (Hesap & Entegrasyon Yaşam Döngüsü):** *(Tamamlandı)*
+    *   Profil güncelleme ve tüm kullanıcı verilerini silme
+    *   Google Calendar/GitHub OAuth callback ve bağlantıyı ayırma akışları
+    *   Dinamik navbar kullanıcı bilgileri ve merkezi 401 yönetimi
+*   **9. Hafta (Yayın Hazırlığı):** *(Tamamlandı)*
+    *   İzole test veritabanı, güvenlik başlıkları ve ayrıntılı health check
+    *   GitHub Actions backend/frontend CI hattı
+    *   Kalıcı Docker veri volume'u, health check ve production Uvicorn yapılandırması
 
 ---
 
@@ -440,11 +452,23 @@ AlterLife, tüm gelişmiş özellikler için **kademeli fallback** sistemi kulla
 
 | Özellik | API Key ile | API Key'siz |
 |---------|-------------|-------------|
-| Avatar üretimi | Gemini Vision + Imagen 3 | DiceBear SVG (otomatik) |
+| Avatar üretimi | Groq Vision + DiceBear | DiceBear SVG (otomatik) |
 | Sesli brifing | Google Cloud TTS | gTTS (ücretsiz, internet gerekir) |
 | RAG Arama | Pinecone / Vertex AI | In-memory cosine similarity |
 | Kaynak önerileri | YouTube Data API | Dinamik arama URL'leri |
-| Simülasyon | Gemini 1.5 Pro | Kural tabanlı fallback |
+| Simülasyon | Groq | Kural tabanlı fallback |
 
 > Tüm özellikler yalnızca `.env` dosyasına ilgili API anahtarı eklenerek premium moda geçer.
 
+---
+
+## 14. Production Kontrol Listesi
+
+1. `backend/.env.example` ve `frontend/.env.example` dosyalarından ortam değişkenlerini oluşturun.
+2. `JWT_SECRET_KEY` için uzun ve rastgele bir değer kullanın; varsayılan anahtarla production açılmaz.
+3. `ENVIRONMENT=production` ve `NEXT_PUBLIC_ENABLE_MOCK_AUTH=false` ayarlayın.
+4. Google/Firebase ile GitHub OAuth callback adreslerini dağıtım alan adınıza göre kaydedin:
+   - `https://<alan-adı>/settings/oauth/google`
+   - `https://<alan-adı>/settings/oauth/github`
+5. `CORS_ORIGINS` değerini yalnızca gerçek frontend alan adlarıyla sınırlandırın.
+6. Dağıtımdan önce `pytest -q` ve `npm run build` kontrollerini çalıştırın. Aynı kontroller her push ve pull request'te CI tarafından uygulanır.

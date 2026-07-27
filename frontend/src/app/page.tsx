@@ -56,6 +56,11 @@ export default function LandingPage() {
               Demo
             </button>
           </Link>
+          <Link href="/demo">
+            <button className="btn-ghost">
+              Tur
+            </button>
+          </Link>
         </div>
       </div>
 

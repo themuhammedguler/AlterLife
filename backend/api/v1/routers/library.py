@@ -6,7 +6,7 @@ Kullanıcının eğitim kütüphanesi: kaynak ekle, tamamla, sil
 import uuid
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Optional
 
 from api.v1.auth_utils import get_current_user_id
@@ -23,7 +23,7 @@ class LibraryResource(BaseModel):
     platform: str
     url: str
     thumbnail_url: Optional[str] = None
-    skill_tags: List[str] = []
+    skill_tags: List[str] = Field(default_factory=list)
     saved_at: str
     is_completed: bool = False
     completed_at: Optional[str] = None
@@ -31,11 +31,11 @@ class LibraryResource(BaseModel):
 
 
 class SaveResourceRequest(BaseModel):
-    title: str
-    platform: str
-    url: str
-    thumbnail_url: Optional[str] = None
-    skill_tags: List[str] = []
+    title: str = Field(min_length=2, max_length=200)
+    platform: str = Field(min_length=2, max_length=50)
+    url: HttpUrl
+    thumbnail_url: Optional[HttpUrl] = None
+    skill_tags: List[str] = Field(default_factory=list, max_length=20)
 
 
 class CompleteResourceResponse(BaseModel):
@@ -110,8 +110,8 @@ async def save_resource(payload: SaveResourceRequest, user_id: str = Depends(get
         "resource_id": f"res_{uuid.uuid4().hex[:8]}",
         "title": payload.title,
         "platform": payload.platform,
-        "url": payload.url,
-        "thumbnail_url": payload.thumbnail_url,
+        "url": str(payload.url),
+        "thumbnail_url": str(payload.thumbnail_url) if payload.thumbnail_url else None,
         "skill_tags": payload.skill_tags,
         "saved_at": str(date.today()),
         "is_completed": False,

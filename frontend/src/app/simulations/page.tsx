@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { getSimulationTree, branchSimulation, runStressTest, generateSimulation } from "@/lib/api";
+import { branchSimulation, generateSimulation, getBranchActionPlan, getSimulationTree, runStressTest, setActiveGoal } from "@/lib/api";
 
 interface NodeData {
   id: string;
@@ -11,6 +11,23 @@ interface NodeData {
   desc: string;
   color: string;
 }
+
+type ActionPlan = {
+  selected_goal: string;
+  summary: string;
+  realism_score: number;
+  fun_angle: string;
+  steps: { title: string; description: string; duration: string; proof: string }[];
+  resources: { title: string; platform: string; url: string; reason: string }[];
+  done_so_far: string[];
+  shared_path: {
+    code: string;
+    common_until: string;
+    together: string[];
+    divergence_options: string[];
+  };
+  research_note: string;
+};
 
 const DEFAULT_NODE: NodeData = {
   id: "node_root",
@@ -28,6 +45,10 @@ export default function SimulationsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<{ optionA: string; optionB: string } | null>(null);
+  const [actionPlan, setActionPlan] = useState<ActionPlan | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [friendCode, setFriendCode] = useState("");
+  const [activeGoalMessage, setActiveGoalMessage] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -119,6 +140,10 @@ export default function SimulationsPage() {
     }
   }, [selectedNode]);
 
+  useEffect(() => {
+    setActionPlan(null);
+  }, [selectedNode.id]);
+
   // Handle Add Branch (What If)
   const handleAddNewBranch = async (text: string) => {
     if (!text.trim()) return;
@@ -176,6 +201,29 @@ export default function SimulationsPage() {
       setError(err.message || "Stres testi çalıştırılamadı.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateActionPlan = async () => {
+    setPlanLoading(true);
+    setError(null);
+    try {
+      const data = await getBranchActionPlan(selectedNode.id, friendCode.trim() || undefined);
+      setActionPlan(data);
+    } catch (err: any) {
+      setError(err.message || "Hedef planı oluşturulamadı.");
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  const handleSetActiveGoal = async () => {
+    try {
+      await setActiveGoal({ simulation_id: `sim_${localStorage.getItem("alterlife_user_id") || "dev_user_001"}`, node_id: selectedNode.id });
+      setActiveGoalMessage("Bu dal ana hedef olarak seçildi.");
+      setTimeout(() => setActiveGoalMessage(null), 2500);
+    } catch (err: any) {
+      setError(err.message || "Aktif hedef seçilemedi.");
     }
   };
 
@@ -512,6 +560,12 @@ export default function SimulationsPage() {
           <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "22px", lineHeight: 1.55 }}>
             {selectedNode.desc}
           </p>
+          {activeGoalMessage && (
+            <p style={{ color: "var(--accent-green)", fontSize: "0.78rem", marginBottom: "12px" }}>{activeGoalMessage}</p>
+          )}
+          <button type="button" className="btn-ghost" style={{ width: "100%", justifyContent: "center", marginBottom: "14px" }} onClick={handleSetActiveGoal}>
+            Ana Hedef Yap
+          </button>
 
           {[
             { label: "Aylık Tasarruf", value: `$${selectedNode.metrics.savings}`, positive: selectedNode.metrics.savings > 500 },
@@ -535,6 +589,142 @@ export default function SimulationsPage() {
               </span>
             </div>
           ))}
+
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "16px",
+              background: "rgba(0, 229, 255, 0.035)",
+              border: "1px solid rgba(0, 229, 255, 0.16)",
+              borderRadius: "var(--radius-md)",
+            }}
+          >
+            <h4 style={{ fontSize: "0.88rem", color: "var(--accent-cyan)", marginBottom: "8px" }}>
+              Bu Dalı Hedefe Çevir
+            </h4>
+            <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.5, marginBottom: "12px" }}>
+              Nasıl yapılacağını, hangi kaynakları kullanacağını, şu ana kadar ne yaptığını ve arkadaşınla nerede ortak kalıp nerede ayrışacağını çıkarır.
+            </p>
+            <input
+              type="text"
+              value={friendCode}
+              onChange={(e) => setFriendCode(e.target.value.toUpperCase())}
+              placeholder="Arkadaş kodu varsa yaz"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                marginBottom: "10px",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--text-primary)",
+                fontSize: "0.82rem",
+                outline: "none",
+              }}
+            />
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={planLoading}
+              style={{ width: "100%", justifyContent: "center", fontSize: "0.85rem" }}
+              onClick={handleCreateActionPlan}
+            >
+              {planLoading ? "Plan hazırlanıyor..." : "Hedef Planını Göster"}
+            </button>
+          </div>
+
+          {actionPlan && (
+            <div style={{ marginTop: "18px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div
+                style={{
+                  padding: "16px",
+                  background: "rgba(124, 58, 237, 0.05)",
+                  border: "1px solid rgba(124, 58, 237, 0.18)",
+                  borderRadius: "var(--radius-md)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center", marginBottom: "8px" }}>
+                  <h4 style={{ fontSize: "0.9rem", fontWeight: 700 }}>Seçilen Hedef</h4>
+                  <span className="badge badge-violet">{actionPlan.realism_score}% gerçekçi</span>
+                </div>
+                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.55, marginBottom: "8px" }}>
+                  {actionPlan.summary}
+                </p>
+                <p style={{ fontSize: "0.78rem", color: "var(--accent-green)", lineHeight: 1.45 }}>
+                  {actionPlan.fun_angle}
+                </p>
+              </div>
+
+              <section>
+                <h4 style={sectionTitleStyle}>Nasıl Yapacağız?</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {actionPlan.steps.map((step, idx) => (
+                    <div key={step.title} style={miniCardStyle}>
+                      <div style={{ color: "var(--accent-cyan)", fontSize: "0.72rem", fontWeight: 700, marginBottom: "5px" }}>
+                        Quest {idx + 1} · {step.duration}
+                      </div>
+                      <strong style={{ display: "block", fontSize: "0.83rem", marginBottom: "5px" }}>{step.title}</strong>
+                      <p style={{ fontSize: "0.76rem", color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: "6px" }}>
+                        {step.description}
+                      </p>
+                      <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Kanıt: {step.proof}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <h4 style={sectionTitleStyle}>Kullanılacak Kaynaklar</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {actionPlan.resources.map((resource) => (
+                    <a
+                      key={resource.url}
+                      href={resource.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ ...miniCardStyle, textDecoration: "none", display: "block" }}
+                    >
+                      <span style={{ color: "var(--accent-amber)", fontSize: "0.72rem", fontWeight: 700 }}>{resource.platform}</span>
+                      <strong style={{ display: "block", fontSize: "0.82rem", margin: "4px 0", color: "var(--text-primary)" }}>
+                        {resource.title}
+                      </strong>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.45 }}>{resource.reason}</p>
+                    </a>
+                  ))}
+                </div>
+                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", lineHeight: 1.4, marginTop: "8px" }}>
+                  {actionPlan.research_note}
+                </p>
+              </section>
+
+              <section>
+                <h4 style={sectionTitleStyle}>Arkadaşla Ortak Yol</h4>
+                <div style={miniCardStyle}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "center", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>Ortak rota kodu</span>
+                    <code style={{ color: "var(--accent-cyan)", fontWeight: 800 }}>{actionPlan.shared_path.code}</code>
+                  </div>
+                  <p style={{ fontSize: "0.76rem", color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: "8px" }}>
+                    Ortak kalınacak nokta: {actionPlan.shared_path.common_until}
+                  </p>
+                  <ul style={compactListStyle}>
+                    {actionPlan.shared_path.together.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                  <div style={{ height: "1px", background: "var(--glass-border)", margin: "10px 0" }} />
+                  <ul style={compactListStyle}>
+                    {actionPlan.shared_path.divergence_options.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                </div>
+              </section>
+
+              <section>
+                <h4 style={sectionTitleStyle}>Şu Ana Kadar Yapılanlar</h4>
+                <ul style={compactListStyle}>
+                  {actionPlan.done_so_far.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </section>
+            </div>
+          )}
 
           {/* Black Swan Stress Test Button */}
           <button
@@ -627,4 +817,26 @@ const suggestionButtonStyle: React.CSSProperties = {
   textAlign: "left",
   fontFamily: "'Inter', sans-serif",
   transition: "all 0.2s ease",
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: "0.86rem",
+  fontWeight: 700,
+  color: "var(--text-primary)",
+  marginBottom: "9px",
+};
+
+const miniCardStyle: React.CSSProperties = {
+  padding: "12px",
+  background: "rgba(255, 255, 255, 0.025)",
+  border: "1px solid var(--glass-border)",
+  borderRadius: "var(--radius-md)",
+};
+
+const compactListStyle: React.CSSProperties = {
+  margin: 0,
+  paddingLeft: "18px",
+  color: "var(--text-secondary)",
+  fontSize: "0.75rem",
+  lineHeight: 1.55,
 };

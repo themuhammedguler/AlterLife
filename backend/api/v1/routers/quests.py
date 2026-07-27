@@ -3,16 +3,15 @@ Quests Router – /api/v1/quests
 Günlük Görevler ve XP Doğrulama
 """
 
-import os
-import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.v1.auth_utils import get_current_user_id
 from api.v1.database import get_user, save_user, get_daily_quests, save_daily_quests, get_simulation_tree
 from api.v1.services.sync_service import sync_and_verify_quests
+from api.v1.services.ai_service import call_groq_json, is_groq_configured
 
 router = APIRouter(prefix="/quests")
 
@@ -28,6 +27,12 @@ class DailyQuest(BaseModel):
     verified_by: str        # "manual" | "calendar_sync" | "github_commit"
     resource_link: Optional[str] = None
     completed_at: Optional[str] = None
+    time_slot: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    energy_level: Optional[str] = None
+    fun_modifier: Optional[str] = None
+    why_now: Optional[str] = None
+    life_context: Optional[str] = None
 
 
 class QuestVerifyResponse(BaseModel):
@@ -38,7 +43,76 @@ class QuestVerifyResponse(BaseModel):
     level_up: bool
 
 
+class DailyFlowRequest(BaseModel):
+    day_type: str = Field(default="normal", pattern="^(light|normal|busy)$")
+    best_focus_time: str = Field(default="evening", pattern="^(morning|afternoon|evening|night)$")
+    mood: str = Field(default="steady", pattern="^(low|steady|playful|high)$")
+    available_minutes: int = Field(default=60, ge=15, le=240)
+    include_social: bool = True
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
+def _slot_label(slot: str) -> str:
+    return {
+        "morning": "Sabah",
+        "afternoon": "Öğle",
+        "evening": "Akşam",
+        "night": "Gece",
+    }.get(slot, "Akşam")
+
+
+def _next_slot(slot: str) -> str:
+    order = ["morning", "afternoon", "evening", "night"]
+    index = order.index(slot) if slot in order else 2
+    return order[min(index + 1, len(order) - 1)]
+
+
+def _enrich_quests_for_flow(quests: List[dict], flow: DailyFlowRequest) -> List[dict]:
+    if not quests:
+        return quests
+
+    total_minutes = flow.available_minutes
+    if flow.day_type == "busy":
+        durations = [10, 20, 10]
+    elif flow.day_type == "light":
+        durations = [20, 35, 15]
+    else:
+        durations = [15, 30, 15]
+    scale = min(1.5, max(0.7, total_minutes / max(sum(durations), 1)))
+    durations = [max(8, round(value * scale)) for value in durations]
+
+    slots = [flow.best_focus_time, _next_slot(flow.best_focus_time), "night" if flow.best_focus_time != "night" else "evening"]
+    fun_bank = {
+        "low": ["minimum viable quest", "sessiz mod", "küçük zafer"],
+        "steady": ["odak sprinti", "net çıktı", "ritim bonusu"],
+        "playful": ["mini boss", "loot görevi", "yan görev"],
+        "high": ["boss fight", "combo streak", "speedrun"],
+    }
+    contexts = {
+        "busy": "Bugün yoğun; plan kısa bloklara bölündü.",
+        "normal": "Bugün dengeli; en zor görev odak saatine yerleştirildi.",
+        "light": "Bugün alan var; pratik görev biraz büyütüldü.",
+    }
+    enriched = []
+    for idx, quest in enumerate(quests[:3]):
+        item = dict(quest)
+        item["time_slot"] = _slot_label(slots[idx])
+        item["duration_minutes"] = durations[idx]
+        item["energy_level"] = "yüksek" if idx == 1 else "orta" if idx == 0 else "düşük"
+        item["fun_modifier"] = fun_bank[flow.mood][idx % len(fun_bank[flow.mood])]
+        item["life_context"] = contexts[flow.day_type]
+        item["why_now"] = (
+            "En fazla zihinsel güç isteyen adım bu saatine alındı."
+            if idx == 1
+            else "Küçük ama görünür ilerleme sağlayan görev."
+        )
+        if not flow.include_social and item.get("quest_id") == "qst_general":
+            item["title"] = "Kısa kişisel bakım molası"
+            item["description"] = "10 dakika yürüyüş, nefes veya masa toparlama yap; ritmi koru ve günü kapat."
+            item["resource_link"] = None
+        enriched.append(item)
+    return enriched
 
 @router.get("/daily", response_model=List[DailyQuest], summary="Günlük görevleri getir")
 async def get_daily(user_id: str = Depends(get_current_user_id)):
@@ -76,15 +150,10 @@ async def get_daily(user_id: str = Depends(get_current_user_id)):
             active_milestone = milestones[0]
             
     # AI ile görev üretmeyi dene
-    api_key = os.getenv("GOOGLE_API_KEY")
     quests = []
     
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash", generation_config={"response_mime_type": "application/json"})
-            
             prompt = f"""
             Kullanıcının rolü: {user_role}
             Kullanıcının aktif hedefi/milestone'u: "{active_milestone}"
@@ -126,10 +195,17 @@ async def get_daily(user_id: str = Depends(get_current_user_id)):
               }}
             ]
             """
-            response = model.generate_content(prompt)
-            quests = json.loads(response.text)
+            quests = call_groq_json(
+                prompt,
+                expect_array=True,
+                validator=lambda items: len(items) == 3 and all(
+                    isinstance(item, dict)
+                    and all(key in item for key in ("quest_id", "title", "description", "xp_reward", "status", "verified_by"))
+                    for item in items
+                ),
+            )
         except Exception as e:
-            print(f"[Quests] Gemini error generating quests: {e}. Falling back to default role-based quests.")
+            print(f"[Quests] Groq error generating quests: {e}. Falling back to default role-based quests.")
             quests = []
 
     # Fallback / Mock quests if AI fails or no key
@@ -231,6 +307,20 @@ async def get_daily(user_id: str = Depends(get_current_user_id)):
     return [DailyQuest(**q) for q in quests]
 
 
+@router.post("/daily/plan", response_model=List[DailyQuest], summary="Günlük hayat akışına göre görev planla")
+async def plan_daily_flow(payload: DailyFlowRequest, user_id: str = Depends(get_current_user_id)):
+    """
+    Günün yoğunluğu, enerji saati ve ruh haline göre bugünün görevlerini yeniden zamanlar.
+    """
+    saved_quests = get_daily_quests(user_id)
+    if not saved_quests:
+        saved_quests = [q.model_dump() for q in await get_daily(user_id)]
+
+    planned = _enrich_quests_for_flow(saved_quests, payload)
+    save_daily_quests(user_id, planned)
+    return [DailyQuest(**q) for q in planned]
+
+
 @router.post("/{quest_id}/verify", response_model=QuestVerifyResponse, summary="Görevi tamamlandı olarak işaretle")
 async def verify_quest(quest_id: str, user_id: str = Depends(get_current_user_id)):
     """
@@ -258,7 +348,7 @@ async def verify_quest(quest_id: str, user_id: str = Depends(get_current_user_id
 
     # Görevi tamamlandı yap
     target_quest["status"] = "completed"
-    target_quest["completed_at"] = datetime.utcnow().isoformat() + "Z"
+    target_quest["completed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     save_daily_quests(user_id, quests)
 
     # Kullanıcı profilini güncelle (XP ekle)

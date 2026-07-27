@@ -3,13 +3,13 @@ import httpx
 from typing import List, Dict, Any
 
 async def fetch_youtube_resources(query: str) -> List[Dict[str, Any]]:
-    api_key = os.getenv("YOUTUBE_API_KEY")
+    api_key = os.getenv("YOUTUBE_DATA_API_KEY")
     if not api_key:
         return []
     try:
         async with httpx.AsyncClient() as client:
             res = await client.get(
-                "https://www.googleapis.com/youtube/v3/search",
+                os.getenv("YOUTUBE_API_URL", "https://www.googleapis.com/youtube/v3/search"),
                 params={
                     "part": "snippet",
                     "q": query,
@@ -46,7 +46,7 @@ async def fetch_udemy_resources(query: str) -> List[Dict[str, Any]]:
         auth = (client_id, client_secret)
         async with httpx.AsyncClient() as client:
             res = await client.get(
-                "https://www.udemy.com/api-2.0/courses/",
+                os.getenv("UDEMY_API_URL", "https://www.udemy.com/api-2.0/courses/"),
                 auth=auth,
                 params={
                     "search": query,
@@ -61,7 +61,7 @@ async def fetch_udemy_resources(query: str) -> List[Dict[str, Any]]:
                     results.append({
                         "title": c.get("title", "Udemy Course"),
                         "platform": "Udemy",
-                        "url": f"https://www.udemy.com{c.get('url')}",
+                        "url": f"{os.getenv('UDEMY_WEB_URL', 'https://www.udemy.com').rstrip('/')}{c.get('url')}",
                         "thumbnail_url": c.get("image_240x135"),
                         "level": "Paid"
                     })

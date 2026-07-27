@@ -2,11 +2,11 @@
 TimelineAgent – Gerçekçi hedef zaman tahmini
 Kullanıcının mevcut hızını (XP, görev tamamlama oranı) ölçerek hedef tarih hesaplar.
 """
-import os, json
 from datetime import date, timedelta
 from typing import Dict, Any
+from api.v1.services.ai_service import call_groq_json, is_groq_configured
 
-GEMINI_SYSTEM = "Sen proje yönetimi ve kariyer planlama uzmanısın. Gerçekçi, veri temelli zaman tahminleri yap. SADECE JSON döndür. Türkçe yaz."
+AI_SYSTEM = "Sen proje yönetimi ve kariyer planlama uzmanısın. Gerçekçi, veri temelli zaman tahminleri yap. SADECE JSON döndür. Türkçe yaz."
 
 def estimate_timeline(user_profile: Dict[str, Any], profile_analysis: Dict[str, Any], analytics_data: Dict = None) -> Dict[str, Any]:
     level = user_profile.get("level", 1)
@@ -22,14 +22,8 @@ def estimate_timeline(user_profile: Dict[str, Any], profile_analysis: Dict[str, 
     weekly_xp = max(50, (xp / max(1, level * 4)) * 7)
     daily_hours_available = 2.0 if active_days >= 5 else 1.0 if active_days >= 3 else 0.5
 
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash",
-                generation_config={"response_mime_type": "application/json"},
-                system_instruction=GEMINI_SYSTEM)
             prompt = f"""
 Kullanıcı İlerleme Metrikleri:
 - Hedef: {goal}
@@ -52,12 +46,19 @@ Gerçekçi zaman tahmini:
 - confidence_score: Bu tahminin güven skoru (0-100)
 - reality_check: Gerçek bir değerlendirme (1-2 cümle, samimi ol)
 """
-            response = model.generate_content(prompt)
-            result = json.loads(response.text)
-            result["source"] = "gemini"
+            result = call_groq_json(
+                prompt,
+                AI_SYSTEM,
+                required_keys=(
+                    "current_pace_months", "optimized_pace_months",
+                    "estimated_completion_date", "bottlenecks",
+                    "milestone_schedule", "confidence_score", "reality_check",
+                ),
+            )
+            result["source"] = "groq"
             return result
         except Exception as e:
-            print(f"[TimelineAgent] Gemini failed: {e}")
+            print(f"[TimelineAgent] Groq failed: {e}")
 
     # Heuristic mock
     # Base months: depends on goal complexity

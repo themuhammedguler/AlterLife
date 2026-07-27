@@ -1,5 +1,9 @@
 import os
-from datetime import datetime, timedelta
+import base64
+import hashlib
+import hmac
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
@@ -12,15 +16,42 @@ load_dotenv()
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "alterlife_super_secret_session_key_2026")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "10080")) # 7 days default
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/email/login", auto_error=False)
+
+
+def hash_password(password: str) -> str:
+    """Hash a password with PBKDF2-HMAC-SHA256 and a unique random salt."""
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 600_000)
+    return "pbkdf2_sha256$600000${}${}".format(
+        base64.b64encode(salt).decode(),
+        base64.b64encode(digest).decode(),
+    )
+
+
+def verify_password(password: str, encoded: str) -> bool:
+    try:
+        algorithm, iterations, salt_b64, digest_b64 = encoded.split("$", 3)
+        if algorithm != "pbkdf2_sha256":
+            return False
+        digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode(),
+            base64.b64decode(salt_b64),
+            int(iterations),
+        )
+        return hmac.compare_digest(digest, base64.b64decode(digest_b64))
+    except (TypeError, ValueError):
+        return False
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -35,14 +66,24 @@ def decode_access_token(token: str) -> Optional[dict]:
 async def get_current_user_id(token: Optional[str] = Depends(oauth2_scheme)) -> str:
     """
     Dependency to authenticate requests. Extracts user_id from the session JWT.
-    If no token is provided, falls back to a development user_id "dev_user_001" to avoid blocking tests.
+    Development mode supports explicit mock tokens and an optional anonymous fallback.
     """
     if not token:
-        # Fallback for dev mode
-        return "dev_user_001"
+        if ENVIRONMENT != "production" and os.getenv("ALLOW_ANONYMOUS_DEV", "false").lower() == "true":
+            return "dev_user_001"
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Oturum açmanız gerekiyor.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
         
     if token.startswith("mock_token_"):
-        return "usr_" + token.replace("mock_token_", "")
+        if ENVIRONMENT != "production":
+            return "usr_" + token.replace("mock_token_", "")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Mock token production ortamında kullanılamaz.",
+        )
         
     payload = decode_access_token(token)
     if payload is None:

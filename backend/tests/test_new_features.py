@@ -75,6 +75,61 @@ def test_community_stats():
     assert "avg_duration_months" in data
 
 
+def test_community_overview_has_cohort_progress():
+    resp = client.get("/api/v1/community/overview", headers=HEADERS)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_cohorts"] > 0
+    assert data["total_members"] > 0
+    assert data["hot_paths"]
+    assert "avg_progress" in data
+
+
+def test_community_path_cohort():
+    resp = client.get("/api/v1/community/paths/path_001/cohort", headers=HEADERS)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["path_id"] == "path_001"
+    assert data["members_count"] > 0
+    assert data["members"]
+    assert data["branches"]
+    assert data["common_until"]
+
+
+def test_community_join_path_and_list_my_paths():
+    join_resp = client.post(
+        "/api/v1/community/paths/path_001/join",
+        json={"branch": "Almanya'da çalışmak"},
+        headers=HEADERS,
+    )
+    assert join_resp.status_code == 200
+    joined = join_resp.json()
+    assert joined["status"] == "joined"
+    assert joined["membership"]["path_id"] == "path_001"
+    assert "progress_percent" in joined["membership"]
+
+    mine_resp = client.get("/api/v1/community/me/paths", headers=HEADERS)
+    assert mine_resp.status_code == 200
+    mine = mine_resp.json()
+    assert any(item["path_id"] == "path_001" for item in mine["memberships"])
+
+
+def test_community_invite_code_resolves():
+    invite_resp = client.post(
+        "/api/v1/community/paths/path_001/invite",
+        json={"branch": "Almanya'da çalışmak"},
+        headers=HEADERS,
+    )
+    assert invite_resp.status_code == 200
+    code = invite_resp.json()["code"]
+    resolved = client.get(f"/api/v1/community/invites/{code}", headers=HEADERS)
+    assert resolved.status_code == 200
+    data = resolved.json()
+    assert data["status"] == "valid"
+    assert data["path_id"] == "path_001"
+    assert data["branch"] == "Almanya'da çalışmak"
+
+
 # ── Briefing Endpoints ────────────────────────────────────────────────────────
 
 def test_daily_briefing_text():
@@ -150,7 +205,6 @@ def test_add_custom_skill():
     assert data["status"] == "success"
     assert "skill_id" in data
     assert data["skill_id"].startswith("custom_")
-    return data["skill_id"]
 
 
 def test_update_skill_position():

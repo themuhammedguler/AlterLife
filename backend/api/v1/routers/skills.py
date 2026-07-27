@@ -1,16 +1,16 @@
 """
 Skills Router – /api/v1/skills
-Yetenek Ağacı: DB'den yükle, Gemini ile kaynak öner, XP ekle
+Yetenek Ağacı: DB'den yükle, Groq ile kaynak öner, XP ekle
 """
 
-import os
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from api.v1.auth_utils import get_current_user_id
 from api.v1.database import get_user, get_skills, save_skills
 from api.v1.services.resource_service import get_dynamic_resources
+from api.v1.services.ai_service import call_groq_research_json, is_groq_configured
 
 router = APIRouter(prefix="/skills")
 
@@ -25,7 +25,7 @@ class SkillNode(BaseModel):
     max_level: int = 5
     xp: int
     is_unlocked: bool
-    prerequisites: List[str] = []
+    prerequisites: List[str] = Field(default_factory=list)
     description: Optional[str] = None
 
 
@@ -43,7 +43,7 @@ class SkillTreeResponse(BaseModel):
 
 
 class AddXPRequest(BaseModel):
-    xp_amount: int
+    xp_amount: int = Field(gt=0, le=500)
 
 
 class AddXPResponse(BaseModel):
@@ -146,17 +146,21 @@ def _build_default_skill_tree(field: str = "") -> List[dict]:
 
 
 def _get_resources(skill_id: str, skill_name: str) -> List[dict]:
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai, json
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f'Suggest 3 high-quality learning resources for: "{skill_name}". Return JSON array with fields: title, platform, url, duration, level. No markdown.'
-            raw = model.generate_content(prompt).text.strip().strip("```json").strip("```").strip()
-            return json.loads(raw)[:5]
+            return call_groq_research_json(
+                prompt + " Verify that every URL is a real, relevant public page.",
+                expect_array=True,
+                validator=lambda items: all(
+                    isinstance(item, dict)
+                    and item.get("title")
+                    and str(item.get("url", "")).startswith(("https://", "http://"))
+                    for item in items
+                ),
+            )[:5]
         except Exception as e:
-            print(f"[Skills] Gemini failed: {e}")
+            print(f"[Skills] Groq failed: {e}")
     return SKILL_RESOURCES_MOCK.get(skill_id, [{"title": f"{skill_name} Tutorial", "platform": "Docs", "url": f"https://www.google.com/search?q={skill_name}+tutorial", "level": "Beginner"}])
 
 
@@ -213,18 +217,18 @@ async def add_skill_xp(skill_id: str, payload: AddXPRequest, user_id: str = Depe
 # ── Custom Skill Node CRUD ────────────────────────────────────────────────────
 
 class CustomSkillRequest(BaseModel):
-    name: str
-    category: str = "Custom"
-    description: Optional[str] = None
-    prerequisites: List[str] = []
-    max_level: int = 5
-    canvas_x: Optional[float] = None
-    canvas_y: Optional[float] = None
+    name: str = Field(min_length=2, max_length=80)
+    category: str = Field(default="Custom", min_length=2, max_length=50)
+    description: Optional[str] = Field(default=None, max_length=500)
+    prerequisites: List[str] = Field(default_factory=list, max_length=20)
+    max_level: int = Field(default=5, ge=1, le=10)
+    canvas_x: Optional[float] = Field(default=None, ge=-10_000, le=10_000)
+    canvas_y: Optional[float] = Field(default=None, ge=-10_000, le=10_000)
 
 
 class NodePositionRequest(BaseModel):
-    canvas_x: float
-    canvas_y: float
+    canvas_x: float = Field(ge=-10_000, le=10_000)
+    canvas_y: float = Field(ge=-10_000, le=10_000)
 
 
 @router.post("/custom", summary="🛠️ Özel yetenek düğümü ekle")
@@ -315,4 +319,3 @@ async def delete_custom_skill(
     save_skills(user_id, updated)
 
     return {"status": "success", "message": f"'{skill['name']}' yeteneği ağaçtan kaldırıldı."}
-

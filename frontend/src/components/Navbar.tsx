@@ -1,20 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { getProfile, logout } from "@/lib/api";
 
 const navLinks = [
   { href: "/dashboard",   label: "Dashboard" },
   { href: "/simulations", label: "Simulasyon" },
   { href: "/agents",      label: "AI Merkez" },
+  { href: "/coach",       label: "Coach" },
   { href: "/skills",      label: "Yetenekler" },
   { href: "/library",     label: "Kutuphane" },
   { href: "/analytics",   label: "Analitik" },
   { href: "/community",   label: "Topluluk" },
+  { href: "/notifications", label: "Bildirimler" },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [profile, setProfile] = useState({ display_name: "Gezgin", level: 1, xp: 0 });
+
+  useEffect(() => {
+    getProfile()
+      .then((data) => setProfile(data))
+      .catch(() => undefined);
+  }, [pathname]);
 
   if (
     pathname === "/login" ||
@@ -27,6 +39,8 @@ export default function Navbar() {
 
   return (
     <nav
+      aria-label="Ana navigasyon"
+      className="main-navbar"
       style={{
         height: "var(--nav-height)",
         background: "rgba(7, 11, 20, 0.85)",
@@ -58,7 +72,7 @@ export default function Navbar() {
       </Link>
 
       {/* Nav links */}
-      <div style={{ display: "flex", gap: "2px" }}>
+      <div className="main-navbar-links" style={{ display: "flex", gap: "2px" }}>
         {navLinks.map((link) => {
           const isActive = pathname === link.href;
           return (
@@ -87,8 +101,8 @@ export default function Navbar() {
       </div>
 
       {/* Profile */}
-      <Link
-        href="/settings"
+      <div
+        className="main-navbar-profile"
         style={{
           display: "flex",
           alignItems: "center",
@@ -109,13 +123,32 @@ export default function Navbar() {
             background: "var(--gradient-cyan-violet)",
           }}
         />
-        <div>
+        <Link href="/settings" style={{ textDecoration: "none" }}>
           <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>
-            Sedef K.
+            {profile.display_name}
           </div>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Svr 1 · 0 XP</div>
-        </div>
-      </Link>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+            Svr {profile.level} · {profile.xp} XP
+          </div>
+        </Link>
+        <button
+          type="button"
+          aria-label="Oturumu kapat"
+          onClick={() => {
+            logout();
+            router.replace("/login");
+          }}
+          style={{
+            border: 0,
+            background: "transparent",
+            color: "var(--text-muted)",
+            cursor: "pointer",
+            fontSize: "0.75rem",
+          }}
+        >
+          Çıkış
+        </button>
+      </div>
     </nav>
   );
 }

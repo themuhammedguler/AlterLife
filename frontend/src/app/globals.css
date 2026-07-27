@@ -315,3 +315,100 @@ body::before {
 .status-dot.inactive {
   background: var(--text-muted);
 }
+/* Keyboard navigation and global system states */
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: -80px;
+  z-index: 1000;
+  padding: 10px 16px;
+  color: #07111f;
+  background: var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+}
+
+.system-state {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.system-state-card {
+  width: min(100%, 520px);
+  padding: 40px;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+}
+
+.system-state-card p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.system-state-code {
+  color: var(--accent-cyan) !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.loading-orbit {
+  width: 46px;
+  height: 46px;
+  border: 3px solid rgba(0, 229, 255, 0.15);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: system-spin 0.8s linear infinite;
+}
+
+@keyframes system-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .main-navbar {
+    padding-inline: 12px !important;
+    gap: 10px;
+  }
+
+  .main-navbar-links {
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .main-navbar-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main-navbar-profile {
+    padding-inline: 10px !important;
+  }
+
+  .main-navbar-profile > a {
+    display: none;
+  }
+}

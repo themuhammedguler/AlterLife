@@ -53,3 +53,12 @@ def test_locked_skill_xp_fails():
     if kube and not kube["is_unlocked"]:
         resp = client.post("/api/v1/skills/kubernetes/xp", headers=headers, json={"xp_amount": 100})
         assert resp.status_code == 400
+
+
+def test_rejects_invalid_xp_amount():
+    response = client.post(
+        "/api/v1/skills/english_professional/xp",
+        headers=headers,
+        json={"xp_amount": -100},
+    )
+    assert response.status_code == 422

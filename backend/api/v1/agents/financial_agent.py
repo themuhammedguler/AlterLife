@@ -1,10 +1,10 @@
 """
 FinancialAdvisorAgent – Birikim planı, özgürlük tarihi, yatırım önerileri
 """
-import os, json
 from typing import Dict, Any
+from api.v1.services.ai_service import call_groq_json, is_groq_configured
 
-GEMINI_SYSTEM = "Sen Türkiye'deki kişiler için kişisel finans danışmanısın. Pratik, gerçekçi ve kişiye özel tavsiyeler ver. SADECE JSON döndür."
+AI_SYSTEM = "Sen Türkiye'deki kişiler için kişisel finans danışmanısın. Pratik, gerçekçi ve kişiye özel tavsiyeler ver. SADECE JSON döndür."
 
 def analyze_finances(user_profile: Dict[str, Any], profile_analysis: Dict[str, Any]) -> Dict[str, Any]:
     monthly_savings = user_profile.get("monthly_savings", 500)
@@ -13,14 +13,8 @@ def analyze_finances(user_profile: Dict[str, Any], profile_analysis: Dict[str, A
     level = user_profile.get("level", 1)
     stress = user_profile.get("stress_level", 40)
 
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash",
-                generation_config={"response_mime_type": "application/json"},
-                system_instruction=GEMINI_SYSTEM)
             prompt = f"""
 Kullanıcı Bilgileri:
 - Aylık Birikim: {monthly_savings} USD
@@ -42,12 +36,18 @@ Bu kullanıcı için kapsamlı bir finansal plan oluştur:
 
 Gerçekçi ve Türkiye ekonomisine uygun rakamlar kullan.
 """
-            response = model.generate_content(prompt)
-            result = json.loads(response.text)
-            result["source"] = "gemini"
+            result = call_groq_json(
+                prompt,
+                AI_SYSTEM,
+                required_keys=(
+                    "emergency_fund_months", "monthly_plan", "target_savings_usd",
+                    "months_to_goal", "investment_split", "key_warnings", "quick_wins",
+                ),
+            )
+            result["source"] = "groq"
             return result
         except Exception as e:
-            print(f"[FinancialAgent] Gemini failed: {e}")
+            print(f"[FinancialAgent] Groq failed: {e}")
 
     # Mock fallback
     months_to_goal = max(6, 10000 // max(1, monthly_savings))

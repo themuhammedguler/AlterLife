@@ -1,9 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getProfile, generateAvatar, getCalendarStatus, getGithubStatus } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  deleteAccount,
+  disconnectCalendar,
+  disconnectGithub,
+  generateAvatar,
+  getCalendarStatus,
+  getGithubStatus,
+  getProfile,
+  logout,
+  updateProfile,
+} from "@/lib/api";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -14,6 +26,10 @@ export default function SettingsPage() {
   const [notifQuestComplete, setNotifQuestComplete] = useState(true);
   const [notifLevelUp, setNotifLevelUp] = useState(true);
   const [notifWeeklyReport, setNotifWeeklyReport] = useState(false);
+  const [dayType, setDayType] = useState<"light" | "normal" | "busy">("normal");
+  const [focusTime, setFocusTime] = useState<"morning" | "afternoon" | "evening" | "night">("evening");
+  const [mood, setMood] = useState<"low" | "steady" | "playful" | "high">("playful");
+  const [availableMinutes, setAvailableMinutes] = useState(60);
 
   // Profile fields state
   const [displayName, setDisplayName] = useState("");
@@ -21,6 +37,7 @@ export default function SettingsPage() {
   const [role, setRole] = useState("");
   const [exp, setExp] = useState("1");
   const [description, setDescription] = useState("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const loadUserProfile = async () => {
     setLoading(true);
@@ -30,6 +47,10 @@ export default function SettingsPage() {
       setDisplayName(data.display_name || "");
       setEmail(data.email || "");
       setRole(data.role || "");
+      setDayType(data.daily_preferences?.day_type || "normal");
+      setFocusTime(data.daily_preferences?.best_focus_time || "evening");
+      setMood(data.daily_preferences?.mood || "playful");
+      setAvailableMinutes(data.daily_preferences?.available_minutes || 60);
       // Fetch details from local storage if not available on profile API directly
       const local = localStorage.getItem("alterlife_onboarding");
       if (local) {
@@ -50,11 +71,23 @@ export default function SettingsPage() {
     getGithubStatus().then(setGithubStatus).catch(console.error);
   }, []);
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     setSuccess(null);
     setError(null);
     try {
-      // Save local backup representation
+      const updated = await updateProfile({
+        display_name: displayName,
+        role,
+        experience_years: Number(exp) || 0,
+        daily_preferences: {
+          day_type: dayType,
+          best_focus_time: focusTime,
+          mood,
+          available_minutes: availableMinutes,
+          include_social: true,
+        },
+      });
+      setProfile(updated);
       const local = localStorage.getItem("alterlife_onboarding");
       const current = local ? JSON.parse(local) : {};
       current.age = exp;
@@ -62,8 +95,8 @@ export default function SettingsPage() {
       
       setSuccess("Profil başarıyla kaydedildi.");
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError("Profil kaydedilemedi.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Profil kaydedilemedi.");
     }
   };
 
@@ -87,12 +120,81 @@ export default function SettingsPage() {
   };
 
   const handlePhotoUpload = () => {
-    // For demo purposes, prompt for a base64 or simulate drawing one
-    const desc = prompt("Avatarınızın RPG stilini yazın (Örn: mavi saçlı, futuristik gözlüklü bir hacktivist):");
-    if (desc) {
-      setDescription(desc);
-      alert("Betimleme kaydedildi. Yeniden Üret butonuna tıklayarak avatarınızı oluşturabilirsiniz.");
+    photoInputRef.current?.click();
+  };
+
+  const handlePhotoSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Yalnızca JPEG, PNG veya WebP fotoğraf yükleyebilirsiniz.");
+      return;
     }
+    if (file.size > 3 * 1024 * 1024) {
+      setError("Fotoğraf en fazla 3 MB olabilir.");
+      return;
+    }
+
+    setAvatarLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const photoBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Fotoğraf okunamadı."));
+        reader.readAsDataURL(file);
+      });
+      const data = await generateAvatar(description, photoBase64, file.type);
+      if (data.avatar_url) {
+        setProfile((prev: any) => ({ ...prev, avatar_url: data.avatar_url }));
+        setSuccess(data.message || "Fotoğraftan avatar oluşturuldu.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fotoğraftan avatar oluşturulamadı.");
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+
+  const startOAuth = (provider: "google-calendar" | "github") => {
+    const state = crypto.randomUUID();
+    sessionStorage.setItem(`alterlife_oauth_state_${provider}`, state);
+    const callbackProvider = provider === "google-calendar" ? "google" : "github";
+    const redirectUri = `${window.location.origin}/settings/oauth/${callbackProvider}`;
+
+    if (provider === "google-calendar") {
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        setError("Google OAuth istemci kimliği yapılandırılmamış.");
+        return;
+      }
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "openid email https://www.googleapis.com/auth/calendar.events",
+        access_type: "offline",
+        prompt: "consent",
+        state,
+      });
+      window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+      return;
+    }
+
+    const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+    if (!clientId) {
+      setError("GitHub OAuth istemci kimliği yapılandırılmamış.");
+      return;
+    }
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: "read:user",
+      state,
+    });
+    window.location.assign(`https://github.com/login/oauth/authorize?${params}`);
   };
 
   return (
@@ -211,6 +313,43 @@ export default function SettingsPage() {
           )}
         </div>
 
+        <div className="glass-card" style={{ padding: "28px" }}>
+          <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "1.1rem", fontWeight: 700, marginBottom: "10px" }}>
+            Günlük Ritim
+          </h2>
+          <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "18px" }}>
+            Dashboard görevleri bu tercihlere göre otomatik daha gerçekçi ve eğlenceli planlanır.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <select value={dayType} onChange={(event) => setDayType(event.target.value as any)} style={selectStyle}>
+              <option value="busy">Yoğun günlerim olur</option>
+              <option value="normal">Dengeli giderim</option>
+              <option value="light">Rahat bloklarım var</option>
+            </select>
+            <select value={focusTime} onChange={(event) => setFocusTime(event.target.value as any)} style={selectStyle}>
+              <option value="morning">Sabah odaklanırım</option>
+              <option value="afternoon">Öğlen açılırım</option>
+              <option value="evening">Akşam güçlenirim</option>
+              <option value="night">Gece üretirim</option>
+            </select>
+            <select value={mood} onChange={(event) => setMood(event.target.value as any)} style={selectStyle}>
+              <option value="low">Düşük enerji modu</option>
+              <option value="steady">Sakin ve stabil</option>
+              <option value="playful">Eğlenceli quest modu</option>
+              <option value="high">Boss fight modu</option>
+            </select>
+            <select value={availableMinutes} onChange={(event) => setAvailableMinutes(Number(event.target.value))} style={selectStyle}>
+              <option value={30}>Günde 30 dk</option>
+              <option value={60}>Günde 60 dk</option>
+              <option value={90}>Günde 90 dk</option>
+              <option value={120}>Günde 120 dk</option>
+            </select>
+          </div>
+          <button className="btn-primary" style={{ marginTop: "18px" }} onClick={handleSaveProfile}>
+            Ritim Tercihlerini Kaydet
+          </button>
+        </div>
+
         {/* Avatar Section */}
         <div className="glass-card" style={{ padding: "28px" }}>
           <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "1.1rem", fontWeight: 700, marginBottom: "16px" }}>
@@ -273,6 +412,14 @@ export default function SettingsPage() {
                 >
                   Görsel Özelleştir
                 </button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoSelected}
+                  style={{ display: "none" }}
+                  aria-label="Avatar fotoğrafı seç"
+                />
               </div>
             </div>
           </div>
@@ -350,6 +497,21 @@ export default function SettingsPage() {
                     <>
                       <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--accent-green)", display: "inline-block", boxShadow: "0 0 6px var(--accent-green)" }} />
                       <span style={{ fontSize: "0.8rem", color: "var(--accent-green)", fontWeight: 500 }}>Bağlı</span>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={async () => {
+                          if (int.id === "google-calendar") {
+                            await disconnectCalendar();
+                            setCalendarStatus({ is_connected: false });
+                          } else {
+                            await disconnectGithub();
+                            setGithubStatus({ is_connected: false });
+                          }
+                        }}
+                      >
+                        Ayır
+                      </button>
                     </>
                   ) : (int as any).comingSoon ? (
                     <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", padding: "6px 12px", border: "1px solid var(--glass-border)", borderRadius: "999px" }}>Yakında</span>
@@ -362,10 +524,7 @@ export default function SettingsPage() {
                         borderRadius: "var(--radius-md)", color: "var(--accent-cyan)", cursor: "pointer",
                         fontFamily: "'Inter', sans-serif", fontWeight: 500, transition: "all 0.2s ease",
                       }}
-                      onClick={() => {
-                        setSuccess(`${int.name} OAuth akışı başlatılıyor... (Demo modunda simüle edildi)`);
-                        setTimeout(() => setSuccess(null), 4000);
-                      }}
+                      onClick={() => startOAuth(int.id as "google-calendar" | "github")}
                     >
                       Bağla
                     </button>
@@ -438,7 +597,16 @@ export default function SettingsPage() {
               fontSize: "0.85rem",
               fontFamily: "'Inter', sans-serif",
             }}
-            onClick={() => alert("Bu işlem geri alınamaz – Onay gerektirir")}
+            onClick={async () => {
+              if (!window.confirm("Hesabınız ve tüm AlterLife verileriniz kalıcı olarak silinecek. Devam edilsin mi?")) return;
+              try {
+                await deleteAccount();
+                logout();
+                router.replace("/");
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Hesap silinemedi.");
+              }
+            }}
           >
             Hesabı Sil
           </button>
@@ -459,4 +627,9 @@ const inputStyle: React.CSSProperties = {
   fontSize: "0.9rem",
   outline: "none",
   fontFamily: "'Inter', sans-serif",
+};
+
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  cursor: "pointer",
 };

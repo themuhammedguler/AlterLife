@@ -1,4 +1,3 @@
-import os
 import json
 import uuid
 import random
@@ -7,6 +6,7 @@ from langgraph.graph import StateGraph, END
 
 from api.v1.database import get_simulation_tree, save_simulation_tree, get_user
 from api.v1.agents.training_data import get_scenario_by_profile
+from api.v1.services.ai_service import call_groq_json
 
 # State definition
 class SimulationState(TypedDict):
@@ -20,33 +20,6 @@ class SimulationState(TypedDict):
     new_node: Optional[Dict[str, Any]]
     crisis_node: Optional[Dict[str, Any]]
     error: Optional[str]
-
-# ── Gemini helper ─────────────────────────────────────────────────────────────
-
-def _call_gemini_json(prompt: str, system_instruction: Optional[str] = None) -> Dict[str, Any]:
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise ValueError("Google API Key not configured")
-
-    try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        
-        generation_config = {
-            "response_mime_type": "application/json"
-        }
-        
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            generation_config=generation_config,
-            system_instruction=system_instruction
-        )
-        
-        response = model.generate_content(prompt)
-        return json.loads(response.text)
-    except Exception as e:
-        print(f"[Gemini] API error: {e}")
-        raise e
 
 # ── LangGraph Node Functions ──────────────────────────────────────────────────
 
@@ -88,7 +61,11 @@ def generate_scenario_node(state: SimulationState) -> SimulationState:
     system_instruction = "You are a professional RPG career simulator. Return ONLY valid JSON. Use Turkish."
     
     try:
-        data = _call_gemini_json(prompt, system_instruction)
+        data = call_groq_json(
+            prompt,
+            system_instruction,
+            required_keys=("milestones", "starting_description", "path_options"),
+        )
         state["tree_data"] = {
             "initial_target": target,
             "milestones": data.get("milestones", []),
@@ -127,15 +104,21 @@ def generate_scenario_node(state: SimulationState) -> SimulationState:
 def multi_projection_node(state: SimulationState) -> SimulationState:
     tree = state["tree_data"]
     
+    profile = state.get("user_profile") or {}
+    monthly_savings = profile.get("monthly_savings_usd", profile.get("monthly_savings", 500))
+    stress_level = profile.get("stress_level", 30)
+    happiness = profile.get("happiness", 70)
+    career_progress = profile.get("career_progress", 20)
+
     root_node = {
         "node_id": "node_root",
         "parent": None,
         "decision_name": "Başlangıç Durumu",
         "metrics": {
-            "monthly_savings": 500,
-            "stress_level": 30,
-            "happiness": 70,
-            "career_progress": 20
+            "monthly_savings": max(0, float(monthly_savings or 0)),
+            "stress_level": min(100, max(0, int(stress_level or 0))),
+            "happiness": min(100, max(0, int(happiness or 0))),
+            "career_progress": min(100, max(0, int(career_progress or 0)))
         },
         "description": tree.get("starting_description", "Simülasyon başlangıcı."),
         "milestones": []
@@ -210,7 +193,11 @@ def generate_branch_node(state: SimulationState) -> SimulationState:
     system_instruction = "You are a professional RPG career simulator. Return ONLY valid JSON in Turkish."
     
     try:
-        data = _call_gemini_json(prompt, system_instruction)
+        data = call_groq_json(
+            prompt,
+            system_instruction,
+            required_keys=("decision_name", "description", "metrics_modifier", "milestones"),
+        )
     except Exception:
         print("[LangGraph] Falling back to Mock branch generation")
         data = {
@@ -282,7 +269,11 @@ def black_swan_crisis_node(state: SimulationState) -> SimulationState:
     system_instruction = "You are an RPG Black Swan Crisis Simulator. Return ONLY valid JSON in Turkish."
     
     try:
-        data = _call_gemini_json(prompt, system_instruction)
+        data = call_groq_json(
+            prompt,
+            system_instruction,
+            required_keys=("crisis_title", "description", "metrics_modifier", "recovery_milestones"),
+        )
     except Exception:
         print("[LangGraph] Falling back to Mock crisis event")
         
