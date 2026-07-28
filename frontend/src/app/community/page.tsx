@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCommunityPaths, searchCommunityPaths, getCommunityStats } from "@/lib/api";
+import type { CSSProperties } from "react";
+import {
+  createCommunityInvite,
+  getCommunityCohort,
+  getCommunityOverview,
+  getCommunityPaths,
+  getCommunityStats,
+  getMyCommunityPaths,
+  joinCommunityPath,
+  searchCommunityPaths,
+} from "@/lib/api";
 
 interface CommunityPath {
   id: string;
@@ -13,6 +23,10 @@ interface CommunityPath {
   tags: string[];
   success: boolean;
   country_to?: string;
+  members_count?: number;
+  avg_progress?: number;
+  branches?: { name: string; members_count: number; avg_progress: number }[];
+  common_until_step?: number;
 }
 
 interface CommunityStats {
@@ -20,6 +34,36 @@ interface CommunityStats {
   success_rate: number;
   avg_duration_months: number;
   top_destinations: { country: string; count: number }[];
+}
+
+interface Cohort {
+  path_id: string;
+  goal: string;
+  members_count: number;
+  avg_progress: number;
+  completion_rate: number;
+  stuck_count: number;
+  common_until: string[];
+  branches: { name: string; members_count: number; avg_progress: number }[];
+  members: {
+    alias: string;
+    branch: string;
+    completed_steps: number;
+    total_steps: number;
+    progress_percent: number;
+    current_step: number;
+    status: "on_track" | "stuck" | "ahead";
+  }[];
+}
+
+interface Membership {
+  path_id: string;
+  goal: string;
+  branch: string;
+  progress_percent: number;
+  current_step: number;
+  total_steps: number;
+  peer_rank: number;
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -40,15 +84,28 @@ export default function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
+  const [selectedPath, setSelectedPath] = useState<CommunityPath | null>(null);
+  const [cohort, setCohort] = useState<Cohort | null>(null);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [joining, setJoining] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
       getCommunityPaths(20),
       getCommunityStats(),
+      getCommunityOverview(),
+      getMyCommunityPaths(),
     ])
-      .then(([pathsData, statsData]) => {
+      .then(([pathsData, statsData, _overviewData, myPathsData]) => {
         setPaths(pathsData.paths || []);
         setStats(statsData);
+        setMemberships(myPathsData.memberships || []);
+        const firstPath = pathsData.paths?.[0];
+        if (firstPath) {
+          setSelectedPath(firstPath);
+          return getCommunityCohort(firstPath.id).then((data) => setCohort(data));
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -71,6 +128,42 @@ export default function CommunityPage() {
       console.error(e);
     } finally {
       setSearching(false);
+    }
+  };
+
+  const selectPath = async (path: CommunityPath) => {
+    setSelectedPath(path);
+    try {
+      const data = await getCommunityCohort(path.id);
+      setCohort(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleJoin = async (branch?: string) => {
+    if (!selectedPath) return;
+    setJoining(true);
+    try {
+      await joinCommunityPath(selectedPath.id, branch);
+      const myPathsData = await getMyCommunityPaths();
+      const cohortData = await getCommunityCohort(selectedPath.id);
+      setMemberships(myPathsData.memberships || []);
+      setCohort(cohortData);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const handleInvite = async (branch?: string) => {
+    if (!selectedPath) return;
+    try {
+      const invite = await createCommunityInvite(selectedPath.id, branch);
+      setInviteCode(invite.code);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -101,6 +194,137 @@ export default function CommunityPage() {
               <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "4px" }}>{s.label}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "22px", marginBottom: "28px" }}>
+        <div className="glass-card" style={{ padding: "24px" }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "6px", color: "var(--accent-cyan)" }}>
+            Rota Radarı
+          </h2>
+          <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "16px" }}>
+            Bir topluluk rotası seç; kimler ne kadar ilerlemiş, nerede takılmış, hangi noktada dallanmış gör.
+          </p>
+          <div style={{ display: "grid", gap: "10px" }}>
+            {paths.slice(0, 5).map((path) => {
+              const active = selectedPath?.id === path.id;
+              return (
+                <button
+                  key={path.id}
+                  type="button"
+                  onClick={() => selectPath(path)}
+                  style={{
+                    ...routeButtonStyle,
+                    borderColor: active ? "var(--accent-cyan)" : "var(--glass-border)",
+                    background: active ? "rgba(0, 229, 255, 0.06)" : "rgba(255,255,255,0.02)",
+                  }}
+                >
+                  <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{path.goal}</span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "0.76rem" }}>
+                    {path.members_count || 0} kişi · ort. %{path.avg_progress || 0} ilerleme
+                  </span>
+                  <ProgressBar value={path.avg_progress || 0} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: "24px" }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "6px", color: "var(--accent-green)" }}>
+            Benim Topluluk Yollarım
+          </h2>
+          {memberships.length === 0 ? (
+            <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.55 }}>
+              Henüz bir rotaya katılmadın. Bir rota seçip aşağıdan dala katılınca burada kendi ilerlemen görünecek.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {memberships.map((item) => (
+                <div key={item.path_id} style={miniPanelStyle}>
+                  <strong style={{ fontSize: "0.82rem" }}>{item.goal}</strong>
+                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", margin: "5px 0" }}>
+                    {item.branch} · Adım {item.current_step}/{item.total_steps} · ilk {item.peer_rank}
+                  </div>
+                  <ProgressBar value={item.progress_percent} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {cohort && selectedPath && (
+        <div className="glass-card" style={{ padding: "24px", marginBottom: "28px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "18px" }}>
+            <div>
+              <h2 style={{ fontSize: "1.05rem", fontWeight: 800, marginBottom: "6px" }}>{cohort.goal}</h2>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                {cohort.members_count} anonim üye · ortalama %{cohort.avg_progress} ilerleme · %{cohort.completion_rate} tamamlanma
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={joining}
+              onClick={() => handleJoin(cohort.branches[0]?.name)}
+              style={{ whiteSpace: "nowrap", fontSize: "0.84rem" }}
+            >
+              {joining ? "Katılıyor..." : "Bu Rotaya Katıl"}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => handleInvite(cohort.branches[0]?.name)}
+              style={{ whiteSpace: "nowrap", fontSize: "0.84rem" }}
+            >
+              Davet Kodu
+            </button>
+          </div>
+          {inviteCode && (
+            <div style={{ ...miniPanelStyle, marginBottom: "16px", display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center" }}>
+              <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>Arkadaşınla paylaşılacak rota kodu</span>
+              <code style={{ color: "var(--accent-cyan)", fontWeight: 800 }}>{inviteCode}</code>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
+            <div style={miniPanelStyle}>
+              <h3 style={panelTitleStyle}>Ortak Gidilen Kısım</h3>
+              {cohort.common_until.map((step, idx) => (
+                <div key={step} style={{ fontSize: "0.77rem", color: "var(--text-secondary)", marginTop: "7px" }}>
+                  {idx + 1}. {step}
+                </div>
+              ))}
+            </div>
+            <div style={miniPanelStyle}>
+              <h3 style={panelTitleStyle}>Dallanma Seçenekleri</h3>
+              {cohort.branches.map((branch) => (
+                <button
+                  key={branch.name}
+                  type="button"
+                  disabled={joining}
+                  onClick={() => handleJoin(branch.name)}
+                  style={branchButtonStyle}
+                >
+                  <span>{branch.name}</span>
+                  <small>{branch.members_count} kişi · %{branch.avg_progress}</small>
+                </button>
+              ))}
+            </div>
+            <div style={miniPanelStyle}>
+              <h3 style={panelTitleStyle}>İnsanlar Nerede?</h3>
+              {cohort.members.slice(0, 5).map((member) => (
+                <div key={member.alias} style={{ marginTop: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.74rem", color: "var(--text-secondary)" }}>
+                    <span>{member.alias} · {member.branch}</span>
+                    <span>{member.progress_percent}%</span>
+                  </div>
+                  <ProgressBar value={member.progress_percent} tone={member.status === "stuck" ? "pink" : member.status === "ahead" ? "green" : "cyan"} />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -255,3 +479,55 @@ export default function CommunityPage() {
     </div>
   );
 }
+
+function ProgressBar({ value, tone = "cyan" }: { value: number; tone?: "cyan" | "green" | "pink" }) {
+  const color = tone === "green" ? "var(--accent-green)" : tone === "pink" ? "var(--accent-pink)" : "var(--accent-cyan)";
+  return (
+    <div style={{ height: "6px", borderRadius: "999px", background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: "7px" }}>
+      <div style={{ width: `${Math.min(Math.max(value, 0), 100)}%`, height: "100%", background: color }} />
+    </div>
+  );
+}
+
+const routeButtonStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "4px",
+  textAlign: "left",
+  padding: "13px",
+  border: "1px solid var(--glass-border)",
+  borderRadius: "var(--radius-md)",
+  color: "var(--text-primary)",
+  cursor: "pointer",
+  fontFamily: "'Inter', sans-serif",
+};
+
+const miniPanelStyle: CSSProperties = {
+  padding: "14px",
+  background: "rgba(255,255,255,0.025)",
+  border: "1px solid var(--glass-border)",
+  borderRadius: "var(--radius-md)",
+};
+
+const panelTitleStyle: CSSProperties = {
+  fontSize: "0.84rem",
+  color: "var(--accent-cyan)",
+  marginBottom: "8px",
+};
+
+const branchButtonStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "8px",
+  alignItems: "center",
+  padding: "9px 0",
+  border: 0,
+  borderBottom: "1px solid var(--glass-border)",
+  background: "transparent",
+  color: "var(--text-secondary)",
+  cursor: "pointer",
+  fontFamily: "'Inter', sans-serif",
+  fontSize: "0.78rem",
+  textAlign: "left",
+};

@@ -1,10 +1,10 @@
 """
 MigrationAgent – Yurt dışı taşınma planlaması (Almanya, Hollanda, Kanada, ABD, İngiltere)
 """
-import os, json
 from typing import Dict, Any
+from api.v1.services.ai_service import call_groq_research_json, is_groq_configured
 
-GEMINI_SYSTEM = "Sen göç ve uluslararası kariyer danışmanısın. Vize, yaşam maliyeti, dil gereksinimleri konusunda doğru ve güncel bilgi ver. SADECE JSON döndür. Türkçe yaz."
+AI_SYSTEM = "Sen göç ve uluslararası kariyer danışmanısın. Vize, yaşam maliyeti, dil gereksinimleri konusunda doğru ve güncel bilgi ver. SADECE JSON döndür. Türkçe yaz."
 
 COUNTRY_DATA = {
     "almanya": {
@@ -87,14 +87,8 @@ def create_migration_plan(user_profile: Dict[str, Any], profile_analysis: Dict[s
     monthly_savings = user_profile.get("monthly_savings", 500)
     city = country["cities"][0]
 
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash",
-                generation_config={"response_mime_type": "application/json"},
-                system_instruction=GEMINI_SYSTEM)
             prompt = f"""
 Göç Planı İsteği:
 - Hedef Ülke: {country['country']}
@@ -116,12 +110,20 @@ Kapsamlı göç planı oluştur:
 - risk_factors: [Göç sürecindeki en büyük 3 risk]
 - success_tips: [Bu ülkede yerleşimi kolaylaştıran 3 ipucu]
 """
-            response = model.generate_content(prompt)
-            result = json.loads(response.text)
-            result["source"] = "gemini"
+            prompt += "\nGüncel vize ve maliyet iddialarını web kaynaklarıyla doğrula; emin olmadığın bilgiyi kesinmiş gibi yazma."
+            result = call_groq_research_json(
+                prompt,
+                AI_SYSTEM,
+                required_keys=(
+                    "target_country", "recommended_city", "visa_recommendation",
+                    "language_requirement", "financial_estimate", "timeline",
+                    "checklist", "risk_factors", "success_tips",
+                ),
+            )
+            result["source"] = "groq"
             return result
         except Exception as e:
-            print(f"[MigrationAgent] Gemini failed: {e}")
+            print(f"[MigrationAgent] Groq failed: {e}")
 
     # Mock fallback
     monthly_living = city["cost"].replace("$/ay", "").replace("$", "")

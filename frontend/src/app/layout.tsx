@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import AuthGuard from "@/components/AuthGuard";
 
 export const metadata: Metadata = {
   title: "AlterLife – Dijital İkizinle Geleceğini Şekillendir",
@@ -22,12 +23,15 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body>
+        <a className="skip-link" href="#main-content">Ana içeriğe geç</a>
         {/* Ambient Background Orbs */}
         <div className="orb orb-violet" aria-hidden="true" />
         <div className="orb orb-cyan" aria-hidden="true" />
 
-        <Navbar />
-        <main>{children}</main>
+        <AuthGuard>
+          <Navbar />
+          <main id="main-content" tabIndex={-1}>{children}</main>
+        </AuthGuard>
       </body>
     </html>
   );

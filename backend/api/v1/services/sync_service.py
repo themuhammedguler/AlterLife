@@ -1,6 +1,6 @@
 import os
 import httpx
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Dict, Any, List, Optional
 
 from api.v1.database import (
@@ -19,7 +19,7 @@ async def refresh_google_token(refresh_token: str) -> Optional[str]:
     try:
         async with httpx.AsyncClient() as client:
             res = await client.post(
-                "https://oauth2.googleapis.com/token",
+                os.getenv("GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token"),
                 data={
                     "client_id": client_id,
                     "client_secret": client_secret,
@@ -57,7 +57,10 @@ async def check_google_calendar_activity(user_id: str, quest_title: str) -> bool
         try:
             async with httpx.AsyncClient() as client:
                 res = await client.get(
-                    "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                    os.getenv(
+                        "GOOGLE_CALENDAR_EVENTS_URL",
+                        "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                    ),
                     headers={"Authorization": f"Bearer {token}"},
                     params={
                         "timeMin": today_start,
@@ -117,7 +120,7 @@ async def check_github_commit_activity(user_id: str) -> bool:
                 headers["Authorization"] = f"token {access_token}"
 
             res = await client.get(
-                f"https://api.github.com/users/{username}/events",
+                f"{os.getenv('GITHUB_API_URL', 'https://api.github.com').rstrip('/')}/users/{username}/events",
                 headers=headers
             )
             if res.status_code == 200:
@@ -161,7 +164,7 @@ async def sync_and_verify_quests(user_id: str) -> List[Dict[str, Any]]:
         if verified:
             # Auto-complete quest
             quest["status"] = "completed"
-            quest["completed_at"] = datetime.utcnow().isoformat() + "Z"
+            quest["completed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             updated = True
             
             # Award XP & Level Up handling (reused logic from quests router)

@@ -4,11 +4,17 @@ In-memory keyword + cosine similarity tabanlı arama.
 Pinecone / Vertex AI Vector Search (opsiyonel) ile genişletilebilir.
 """
 
+import hashlib
 import math
 import re
-import json
-import os
 from typing import List, Dict, Optional
+
+from api.v1.database import (
+    get_community_memberships,
+    get_community_paths,
+    save_community_memberships,
+    save_community_paths,
+)
 
 # ── Örnek Topluluk Yolları (Seed Data) ───────────────────────────────────────
 # Gerçek uygulamada Firestore'dan çekilir
@@ -23,7 +29,14 @@ COMMUNITY_SEED_PATHS = [
         "tags": ["almanya", "backend", "python", "aws", "göç"],
         "success": True,
         "country_from": "Turkey",
-        "country_to": "Germany"
+        "country_to": "Germany",
+        "members_count": 42,
+        "avg_progress": 68,
+        "common_until_step": 2,
+        "branches": [
+            {"name": "Almanya'da çalışmak", "members_count": 24, "avg_progress": 71},
+            {"name": "Almanya'da master", "members_count": 18, "avg_progress": 61},
+        ],
     },
     {
         "id": "path_002",
@@ -35,7 +48,14 @@ COMMUNITY_SEED_PATHS = [
         "tags": ["freelance", "tasarım", "figma", "remote", "finansal özgürlük"],
         "success": True,
         "country_from": "Turkey",
-        "country_to": None
+        "country_to": None,
+        "members_count": 27,
+        "avg_progress": 54,
+        "common_until_step": 1,
+        "branches": [
+            {"name": "Upwork ağırlıklı", "members_count": 15, "avg_progress": 58},
+            {"name": "Ajans müşterisi", "members_count": 12, "avg_progress": 49},
+        ],
     },
     {
         "id": "path_003",
@@ -47,7 +67,14 @@ COMMUNITY_SEED_PATHS = [
         "tags": ["startup", "girişim", "mvp", "funding", "saas"],
         "success": True,
         "country_from": "Turkey",
-        "country_to": None
+        "country_to": None,
+        "members_count": 19,
+        "avg_progress": 46,
+        "common_until_step": 1,
+        "branches": [
+            {"name": "B2B SaaS", "members_count": 11, "avg_progress": 52},
+            {"name": "Consumer app", "members_count": 8, "avg_progress": 38},
+        ],
     },
     {
         "id": "path_004",
@@ -59,7 +86,14 @@ COMMUNITY_SEED_PATHS = [
         "tags": ["kanada", "göç", "express entry", "pr", "yazılım"],
         "success": True,
         "country_from": "Turkey",
-        "country_to": "Canada"
+        "country_to": "Canada",
+        "members_count": 31,
+        "avg_progress": 57,
+        "common_until_step": 1,
+        "branches": [
+            {"name": "Express Entry", "members_count": 21, "avg_progress": 62},
+            {"name": "Job offer", "members_count": 10, "avg_progress": 48},
+        ],
     },
     {
         "id": "path_005",
@@ -71,7 +105,14 @@ COMMUNITY_SEED_PATHS = [
         "tags": ["aws", "devops", "kubernetes", "terraform", "cloud", "geçiş"],
         "success": True,
         "country_from": "Turkey",
-        "country_to": None
+        "country_to": None,
+        "members_count": 36,
+        "avg_progress": 63,
+        "common_until_step": 1,
+        "branches": [
+            {"name": "AWS/Cloud", "members_count": 22, "avg_progress": 67},
+            {"name": "Kubernetes/SRE", "members_count": 14, "avg_progress": 56},
+        ],
     },
     {
         "id": "path_006",
@@ -83,7 +124,14 @@ COMMUNITY_SEED_PATHS = [
         "tags": ["yüksek lisans", "phd", "abd", "burs", "akademi"],
         "success": True,
         "country_from": "Turkey",
-        "country_to": "USA"
+        "country_to": "USA",
+        "members_count": 23,
+        "avg_progress": 49,
+        "common_until_step": 1,
+        "branches": [
+            {"name": "Tam burs", "members_count": 14, "avg_progress": 52},
+            {"name": "Araştırma asistanlığı", "members_count": 9, "avg_progress": 43},
+        ],
     },
     {
         "id": "path_007",
@@ -95,7 +143,14 @@ COMMUNITY_SEED_PATHS = [
         "tags": ["hollanda", "data science", "machine learning", "amsterdam", "göç"],
         "success": True,
         "country_from": "Turkey",
-        "country_to": "Netherlands"
+        "country_to": "Netherlands",
+        "members_count": 16,
+        "avg_progress": 59,
+        "common_until_step": 2,
+        "branches": [
+            {"name": "Data scientist", "members_count": 10, "avg_progress": 64},
+            {"name": "ML engineer", "members_count": 6, "avg_progress": 51},
+        ],
     },
     {
         "id": "path_008",
@@ -107,9 +162,30 @@ COMMUNITY_SEED_PATHS = [
         "tags": ["youtube", "içerik", "pasif gelir", "ingilizce", "yaratıcı"],
         "success": True,
         "country_from": "Turkey",
-        "country_to": None
+        "country_to": None,
+        "members_count": 21,
+        "avg_progress": 44,
+        "common_until_step": 1,
+        "branches": [
+            {"name": "YouTube", "members_count": 13, "avg_progress": 48},
+            {"name": "Newsletter", "members_count": 8, "avg_progress": 37},
+        ],
     }
 ]
+
+COMMUNITY_MEMBERSHIPS: Dict[str, List[dict]] = {}
+
+
+def _paths_store() -> List[dict]:
+    stored = get_community_paths()
+    if stored:
+        return stored
+    save_community_paths(COMMUNITY_SEED_PATHS)
+    return COMMUNITY_SEED_PATHS
+
+
+def _save_paths_store(paths: List[dict]) -> None:
+    save_community_paths(paths)
 
 
 # ── Tokenizer & TF-IDF Benzeri Arama ─────────────────────────────────────────
@@ -158,9 +234,10 @@ def search_similar_paths(goal: str, top_k: int = 4) -> List[dict]:
     Cosine similarity tabanlı in-memory arama.
     """
     query_tokens = _tokenize(goal)
+    paths = _paths_store()
     
     # Tüm yol metinlerini hazırla
-    path_texts = [_tokenize(_path_to_text(p)) for p in COMMUNITY_SEED_PATHS]
+    path_texts = [_tokenize(_path_to_text(p)) for p in paths]
     
     # Vocab oluştur
     vocab_set: set = set(query_tokens)
@@ -169,14 +246,14 @@ def search_similar_paths(goal: str, top_k: int = 4) -> List[dict]:
     vocab = sorted(vocab_set)
     
     if not vocab:
-        return COMMUNITY_SEED_PATHS[:top_k]
+        return paths[:top_k]
     
     # Query vektörü
     query_vec = _build_term_vector(query_tokens, vocab)
     
     # Her yol için similarity hesapla
     scored = []
-    for i, path in enumerate(COMMUNITY_SEED_PATHS):
+    for i, path in enumerate(paths):
         path_vec = _build_term_vector(path_texts[i], vocab)
         score = _cosine_similarity(query_vec, path_vec)
         scored.append((score, path))
@@ -188,7 +265,7 @@ def search_similar_paths(goal: str, top_k: int = 4) -> List[dict]:
 
 def get_all_paths(limit: int = 20) -> List[dict]:
     """Tüm topluluk yollarını döner."""
-    return COMMUNITY_SEED_PATHS[:limit]
+    return _paths_store()[:limit]
 
 
 def anonymize_path(path: dict) -> dict:
@@ -214,7 +291,124 @@ def add_community_path(user_id: str, goal: str, steps: List[str], outcome: str, 
         "success": True,
         "country_from": "Unknown",
         "country_to": None,
-        "shared_by": "anonymous"
+        "shared_by": "anonymous",
+        "members_count": 1,
+        "avg_progress": 100,
+        "common_until_step": max(0, min(1, len(steps) - 1)),
+        "branches": [
+            {"name": "Ana rota", "members_count": 1, "avg_progress": 100},
+        ],
     }
-    COMMUNITY_SEED_PATHS.append(new_path)
+    paths = _paths_store()
+    paths.append(new_path)
+    _save_paths_store(paths)
     return new_path
+
+
+def get_path_by_id(path_id: str) -> Optional[dict]:
+    return next((path for path in _paths_store() if path.get("id") == path_id), None)
+
+
+def join_path(user_id: str, path_id: str, branch: Optional[str] = None) -> dict:
+    paths = _paths_store()
+    path = next((item for item in paths if item.get("id") == path_id), None)
+    if not path:
+        raise ValueError("Path not found")
+
+    branch_name = branch or (path.get("branches") or [{"name": "Ana rota"}])[0]["name"]
+    progress = _deterministic_progress(user_id, path_id, len(path.get("steps", [])))
+    membership = {
+        "path_id": path_id,
+        "goal": path["goal"],
+        "branch": branch_name,
+        "completed_steps": progress["completed_steps"],
+        "total_steps": progress["total_steps"],
+        "progress_percent": progress["progress_percent"],
+        "current_step": progress["current_step"],
+        "peer_rank": progress["peer_rank"],
+        "joined_as": "anonymous",
+    }
+    memberships = get_community_memberships(user_id) or COMMUNITY_MEMBERSHIPS.setdefault(user_id, [])
+    existing = next((item for item in memberships if item["path_id"] == path_id), None)
+    if existing:
+        existing.update(membership)
+    else:
+        memberships.append(membership)
+        path["members_count"] = path.get("members_count", 0) + 1
+        _save_paths_store(paths)
+    save_community_memberships(user_id, memberships)
+    return membership
+
+
+def get_user_memberships(user_id: str) -> List[dict]:
+    return get_community_memberships(user_id) or COMMUNITY_MEMBERSHIPS.get(user_id, [])
+
+
+def get_cohort_for_path(path_id: str) -> dict:
+    path = get_path_by_id(path_id)
+    if not path:
+        raise ValueError("Path not found")
+
+    members = _sample_members(path)
+    completed = [member for member in members if member["progress_percent"] >= 100]
+    stuck = [member for member in members if member["status"] == "stuck"]
+    return {
+        "path_id": path_id,
+        "goal": path["goal"],
+        "members_count": path.get("members_count", len(members)),
+        "avg_progress": path.get("avg_progress", 0),
+        "completion_rate": round(len(completed) / max(len(members), 1) * 100),
+        "stuck_count": len(stuck),
+        "common_until": path.get("steps", [])[: path.get("common_until_step", 1) + 1],
+        "branches": path.get("branches", []),
+        "members": members,
+    }
+
+
+def build_community_overview(limit: int = 20) -> dict:
+    paths = get_all_paths(limit)
+    cohorts = [get_cohort_for_path(path["id"]) for path in paths]
+    total_members = sum(cohort["members_count"] for cohort in cohorts)
+    avg_progress = round(sum(cohort["avg_progress"] for cohort in cohorts) / max(len(cohorts), 1))
+    hot_paths = sorted(cohorts, key=lambda cohort: cohort["members_count"], reverse=True)[:3]
+    needs_help = sorted(cohorts, key=lambda cohort: cohort["stuck_count"], reverse=True)[:3]
+    return {
+        "total_cohorts": len(cohorts),
+        "total_members": total_members,
+        "avg_progress": avg_progress,
+        "hot_paths": hot_paths,
+        "needs_help": needs_help,
+    }
+
+
+def _deterministic_progress(user_id: str, path_id: str, total_steps: int) -> dict:
+    total = max(total_steps, 1)
+    seed = int(hashlib.sha1(f"{user_id}:{path_id}".encode("utf-8")).hexdigest()[:8], 16)
+    completed = min(total, seed % (total + 1))
+    current_idx = min(completed, total - 1)
+    return {
+        "completed_steps": completed,
+        "total_steps": total,
+        "progress_percent": round(completed / total * 100),
+        "current_step": current_idx + 1,
+        "peer_rank": (seed % 18) + 1,
+    }
+
+
+def _sample_members(path: dict) -> List[dict]:
+    aliases = ["A-17", "B-04", "C-92", "D-31", "E-66", "F-28"]
+    statuses = ["on_track", "on_track", "stuck", "ahead", "on_track", "stuck"]
+    total = max(len(path.get("steps", [])), 1)
+    members = []
+    for idx, alias in enumerate(aliases):
+        completed = min(total, max(0, idx % (total + 1)))
+        members.append({
+            "alias": alias,
+            "branch": (path.get("branches") or [{"name": "Ana rota"}])[idx % len(path.get("branches") or [1])]["name"],
+            "completed_steps": completed,
+            "total_steps": total,
+            "progress_percent": round(completed / total * 100),
+            "current_step": min(completed + 1, total),
+            "status": statuses[idx],
+        })
+    return members

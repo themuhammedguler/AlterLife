@@ -11,7 +11,45 @@ services:
     environment:
       - ENVIRONMENT=development
       - CORS_ORIGINS=http://localhost:3000
+      - ALTERLIFE_DB_FILE=/app/data/alterlife_db.json
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_API_URL=${GROQ_API_URL:-https://api.groq.com/openai/v1/chat/completions}
+      - GROQ_TEXT_MODEL=${GROQ_TEXT_MODEL:-llama-3.3-70b-versatile}
+      - GROQ_VISION_MODEL=${GROQ_VISION_MODEL:-qwen/qwen3.6-27b}
+      - GROQ_RESEARCH_MODEL=${GROQ_RESEARCH_MODEL:-groq/compound}
+      - AVATAR_IMAGE_PROVIDER=${AVATAR_IMAGE_PROVIDER:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_IMAGES_API_URL=${OPENAI_IMAGES_API_URL:-https://api.openai.com/v1/images/generations}
+      - OPENAI_IMAGE_MODEL=${OPENAI_IMAGE_MODEL:-gpt-image-1}
+      - DICEBEAR_API_URL=${DICEBEAR_API_URL:-https://api.dicebear.com/9.x}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_TOKEN_URL=${GOOGLE_TOKEN_URL:-https://oauth2.googleapis.com/token}
+      - GOOGLE_USERINFO_URL=${GOOGLE_USERINFO_URL:-https://www.googleapis.com/oauth2/v2/userinfo}
+      - GOOGLE_CALENDAR_EVENTS_URL=${GOOGLE_CALENDAR_EVENTS_URL:-https://www.googleapis.com/calendar/v3/calendars/primary/events}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GITHUB_API_URL=${GITHUB_API_URL:-https://api.github.com}
+      - GITHUB_TOKEN_URL=${GITHUB_TOKEN_URL:-https://github.com/login/oauth/access_token}
+      - YOUTUBE_DATA_API_KEY=${YOUTUBE_DATA_API_KEY:-}
+      - YOUTUBE_API_URL=${YOUTUBE_API_URL:-https://www.googleapis.com/youtube/v3/search}
+      - UDEMY_CLIENT_ID=${UDEMY_CLIENT_ID:-}
+      - UDEMY_CLIENT_SECRET=${UDEMY_CLIENT_SECRET:-}
+      - UDEMY_API_URL=${UDEMY_API_URL:-https://www.udemy.com/api-2.0/courses/}
+      - UDEMY_WEB_URL=${UDEMY_WEB_URL:-https://www.udemy.com}
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY:-}
+      - GOOGLE_CUSTOM_SEARCH_API_KEY=${GOOGLE_CUSTOM_SEARCH_API_KEY:-}
+      - GOOGLE_CUSTOM_SEARCH_CX=${GOOGLE_CUSTOM_SEARCH_CX:-}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-alterlife_super_secret_session_key_2026}
       # Gerçek değerleri buraya ekleyin veya backend/.env dosyası oluşturun
+    volumes:
+      - alterlife_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     networks:
       - alterlife_network
     restart: unless-stopped
@@ -20,14 +58,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_ENABLE_MOCK_AUTH: "true"
     container_name: alterlife_frontend
     ports:
       - "3000:3000"
 
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - alterlife_network
     restart: unless-stopped
@@ -35,3 +75,6 @@ services:
 networks:
   alterlife_network:
     driver: bridge
+
+volumes:
+  alterlife_data:

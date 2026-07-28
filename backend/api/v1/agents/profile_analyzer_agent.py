@@ -4,9 +4,8 @@ Kişilik arketipi, motivasyon kaynakları, risk toleransı, öğrenme stili beli
 Bu bilgi OrchestratorAgent tarafından diğer agent'lara aktarılır.
 """
 
-import os
-import json
 from typing import Dict, Any, Optional
+from api.v1.services.ai_service import call_groq_json, is_groq_configured
 
 PERSONALITY_ARCHETYPES = {
     "Riskçi": "Yüksek riskli yüksek ödüllü yolları tercih eder. Hızlı hareket eder, startup/girişim odaklı.",
@@ -18,7 +17,7 @@ PERSONALITY_ARCHETYPES = {
 MOTIVATION_TYPES = ["Para / Finansal Güvenlik", "Özgürlük / Bağımsızlık", "Prestij / Tanınma", "Anlam / Sosyal Etki", "Aile / İstikrar"]
 LEARNING_STYLES = ["Videolardan", "Yaparak / Uygulayarak", "Kitaptan / Okuyarak", "Mentörden"]
 
-GEMINI_SYSTEM_INSTRUCTION = """
+AI_SYSTEM_INSTRUCTION = """
 Sen AlterLife'ın Profil Analiz Uzmanısın.
 Kullanıcının verdiği bilgilere dayanarak derin bir psikolojik ve kariyer profili çıkarıyorsun.
 Her zaman Türkçe yaz. Samimi, anlayışlı ve motive edici bir dil kullan.
@@ -97,19 +96,10 @@ def _determine_archetype_heuristic(user_profile: Dict[str, Any]) -> str:
 
 def analyze_user_profile(user_profile: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Kullanıcı profilini analiz eder. Önce Gemini, yoksa mock.
+    Kullanıcı profilini analiz eder. Önce Groq, yoksa mock.
     """
-    api_key = os.getenv("GOOGLE_API_KEY")
-
-    if api_key:
+    if is_groq_configured():
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(
-                model_name="gemini-1.5-flash",
-                generation_config={"response_mime_type": "application/json"},
-                system_instruction=GEMINI_SYSTEM_INSTRUCTION,
-            )
             prompt = f"""
 Kullanıcı Profili:
 - Yaş: {user_profile.get('age', '?')}
@@ -150,12 +140,19 @@ Bu kullanıcı için kapsamlı bir profil analizi yap. Şu alanları doldur:
   "motivational_message": "Adım adım ilerlemek yavaş görünür ama en sağlam yol odur."
 }}
 """
-            response = model.generate_content(prompt)
-            result = json.loads(response.text)
-            result["source"] = "gemini"
+            result = call_groq_json(
+                prompt,
+                AI_SYSTEM_INSTRUCTION,
+                required_keys=(
+                    "archetype", "archetype_description", "motivation_primary",
+                    "learning_style", "risk_tolerance", "strengths", "blind_spots",
+                    "recommended_agents", "motivational_message",
+                ),
+            )
+            result["source"] = "groq"
             return result
         except Exception as e:
-            print(f"[ProfileAnalyzer] Gemini failed: {e}. Using heuristic mock.")
+            print(f"[ProfileAnalyzer] Groq failed: {e}. Using heuristic mock.")
 
     # Heuristic mock fallback
     archetype = _determine_archetype_heuristic(user_profile)

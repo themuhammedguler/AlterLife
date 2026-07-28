@@ -1,7 +1,7 @@
 import os
 import json
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from api.v1.models import (
     UserDoc,
@@ -37,16 +37,16 @@ try:
 except Exception as e:
     print(f"[Database] Failed to initialize Firebase Admin SDK: {e}. Operating in local fallback JSON mode.")
 
-MOCK_DB_FILE = "./alterlife_db.json"
+MOCK_DB_FILE = os.getenv("ALTERLIFE_DB_FILE", "./alterlife_db.json")
 
 def _load_mock_db() -> Dict[str, Any]:
     if not os.path.exists(MOCK_DB_FILE):
-        return {"users": {}, "simulations": {}, "quests": {}, "library": {}, "skills": {}, "analytics": {}}
+        return {"users": {}, "simulations": {}, "quests": {}, "library": {}, "skills": {}, "analytics": {}, "community": {}}
     try:
         with open(MOCK_DB_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return {"users": {}, "simulations": {}, "quests": {}, "library": {}, "skills": {}, "analytics": {}}
+        return {"users": {}, "simulations": {}, "quests": {}, "library": {}, "skills": {}, "analytics": {}, "community": {}}
 
 def _save_mock_db(db_data: Dict[str, Any]) -> None:
     try:
@@ -71,7 +71,7 @@ def get_user(user_id: str) -> Optional[Dict[str, Any]]:
 def save_user(user_id: str, data: Dict[str, Any]) -> None:
     existing = get_user(user_id) or {"userId": user_id, "email": data.get("email", f"{user_id}@placeholder.com")}
     merged = {**existing, **data}
-    merged["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    merged["updatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     
     validated = UserDoc(**merged).model_dump()
     
@@ -82,6 +82,74 @@ def save_user(user_id: str, data: Dict[str, Any]) -> None:
         if "users" not in db: db["users"] = {}
         db["users"][user_id] = validated
         _save_mock_db(db)
+
+
+def delete_user_data(user_id: str) -> None:
+    """Delete a user and all user-scoped product data."""
+    simulation_id = f"sim_{user_id}"
+    if _db_mode == "firestore" and _db_ref:
+        for collection, document in (
+            ("users", user_id),
+            ("simulations", simulation_id),
+            ("quests", user_id),
+            ("library", user_id),
+            ("skills", user_id),
+            ("analytics", user_id),
+            ("community_memberships", user_id),
+        ):
+            _db_ref.collection(collection).document(document).delete()
+        return
+
+    db = _load_mock_db()
+    for collection, key in (
+        ("users", user_id),
+        ("simulations", simulation_id),
+        ("quests", user_id),
+        ("library", user_id),
+        ("skills", user_id),
+        ("analytics", user_id),
+        ("community_memberships", user_id),
+    ):
+        db.setdefault(collection, {}).pop(key, None)
+    _save_mock_db(db)
+
+
+def get_community_paths() -> List[Dict[str, Any]]:
+    if _db_mode == "firestore" and _db_ref:
+        docs = _db_ref.collection("community_paths").stream()
+        return [doc.to_dict() for doc in docs]
+    db = _load_mock_db()
+    return db.get("community", {}).get("paths", [])
+
+
+def save_community_paths(paths: List[Dict[str, Any]]) -> None:
+    if _db_mode == "firestore" and _db_ref:
+        batch = _db_ref.batch()
+        for path in paths:
+            doc_ref = _db_ref.collection("community_paths").document(path["id"])
+            batch.set(doc_ref, path)
+        batch.commit()
+        return
+    db = _load_mock_db()
+    db.setdefault("community", {})["paths"] = paths
+    _save_mock_db(db)
+
+
+def get_community_memberships(user_id: str) -> List[Dict[str, Any]]:
+    if _db_mode == "firestore" and _db_ref:
+        doc = _db_ref.collection("community_memberships").document(user_id).get()
+        return doc.to_dict().get("memberships", []) if doc.exists else []
+    db = _load_mock_db()
+    return db.get("community", {}).get("memberships", {}).get(user_id, [])
+
+
+def save_community_memberships(user_id: str, memberships: List[Dict[str, Any]]) -> None:
+    if _db_mode == "firestore" and _db_ref:
+        _db_ref.collection("community_memberships").document(user_id).set({"memberships": memberships})
+        return
+    db = _load_mock_db()
+    db.setdefault("community", {}).setdefault("memberships", {})[user_id] = memberships
+    _save_mock_db(db)
 
 def get_simulation_tree(simulation_id: str) -> Optional[Dict[str, Any]]:
     if _db_mode == "firestore" and _db_ref:

@@ -23,6 +23,36 @@ def test_google_calendar_connect():
     assert res_status.json()["is_connected"] is True
     assert res_status.json()["username"] == "mock_google_user@gmail.com"
 
+    disconnected = client.delete("/api/v1/integrations/calendar", headers=headers)
+    assert disconnected.status_code == 200
+    assert client.get("/api/v1/integrations/calendar/status", headers=headers).json()["is_connected"] is False
+
+
+def test_google_calendar_quest_event_mock():
+    headers = {"Authorization": "Bearer mock_token_calendar_event"}
+    connected = client.post(
+        "/api/v1/integrations/calendar/connect",
+        json={"code": "mock_code_calendar", "redirect_uri": "http://localhost:3000/callback"},
+        headers=headers,
+    )
+    assert connected.status_code == 200
+
+    response = client.post(
+        "/api/v1/integrations/calendar/quest-event",
+        json={
+            "quest_id": "qst_test",
+            "title": "Test quest",
+            "description": "Test reminder",
+            "time_slot": "Akşam",
+            "duration_minutes": 25,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "created"
+    assert data["event_id"] == "mock_evt_qst_test"
+
 def test_github_connect():
     headers = {"Authorization": "Bearer mock_token_testuser_sync"}
     
@@ -39,6 +69,10 @@ def test_github_connect():
     res_status = client.get("/api/v1/integrations/github/status", headers=headers)
     assert res_status.status_code == 200
     assert res_status.json()["is_connected"] is True
+
+    disconnected = client.delete("/api/v1/integrations/github", headers=headers)
+    assert disconnected.status_code == 200
+    assert client.get("/api/v1/integrations/github/status", headers=headers).json()["is_connected"] is False
     assert res_status.json()["username"] == "mock_github_user"
 
 def test_quest_sync_verification():

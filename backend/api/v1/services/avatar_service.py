@@ -1,29 +1,22 @@
 """
-Avatar Service – Gemini Vision + DiceBear Fallback
+Avatar Service – Groq Vision + DiceBear Fallback
 Kullanıcının metin betimlemesi veya fotoğrafından RPG avatar üretir.
 """
 
-import os
-import hashlib
 import base64
-import urllib.request
+import hashlib
+import os
 import urllib.parse
 from typing import Optional
 
-# ── Gemini / Google AI Client ─────────────────────────────────────────────────
-try:
-    import google.generativeai as genai
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    if GEMINI_API_KEY:
-        genai.configure(api_key=GEMINI_API_KEY)
-    _GEMINI_AVAILABLE = bool(GEMINI_API_KEY)
-except ImportError:
-    _GEMINI_AVAILABLE = False
+import httpx
+
+from api.v1.services.ai_service import analyze_image_with_groq, is_groq_configured
 
 
 # ── DiceBear Styles ───────────────────────────────────────────────────────────
 DICEBEAR_STYLES = ["avataaars", "micah", "personas", "lorelei", "bottts-neutral"]
-DICEBEAR_BASE = "https://api.dicebear.com/9.x"
+DICEBEAR_BASE = os.getenv("DICEBEAR_API_URL", "https://api.dicebear.com/9.x")
 
 # ── RPG Avatar Prompt Templates ───────────────────────────────────────────────
 RPG_STYLE_SUFFIX = (
@@ -52,24 +45,18 @@ STYLE_VIBE: [description]
 """
 
 
-def analyze_photo_with_gemini(photo_base64: str) -> str:
+def analyze_photo_with_groq(photo_base64: str, mime_type: str = "image/jpeg") -> str:
     """
-    Gemini Vision ile yüklenen fotoğrafı analiz ederek fiziksel betimi döner.
+    Groq Vision ile yüklenen fotoğrafı analiz ederek fiziksel betimi döner.
     API yoksa basit fallback döner.
     """
-    if not _GEMINI_AVAILABLE:
+    if not is_groq_configured():
         return "Short dark hair, brown eyes, medium skin tone, modern professional style"
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        image_data = {
-            "mime_type": "image/jpeg",
-            "data": photo_base64
-        }
-        response = model.generate_content([PHOTO_ANALYSIS_PROMPT, image_data])
-        return response.text.strip()
+        return analyze_image_with_groq(photo_base64, PHOTO_ANALYSIS_PROMPT, mime_type)
     except Exception as e:
-        print(f"[AvatarService] Gemini Vision error: {e}")
+        print(f"[AvatarService] Groq Vision error: {e}")
         return "Short dark hair, brown eyes, medium skin tone, professional style"
 
 
@@ -107,21 +94,56 @@ def generate_dicebear_url(seed: str, style: str = "avataaars") -> str:
     return url
 
 
+def generate_ai_image(prompt: str) -> Optional[str]:
+    """Optionally generate a real image; return URL/data URL or None."""
+    if os.getenv("AVATAR_IMAGE_PROVIDER", "").lower() != "openai":
+        return None
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        response = httpx.post(
+            os.getenv("OPENAI_IMAGES_API_URL", "https://api.openai.com/v1/images/generations"),
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1"),
+                "prompt": prompt,
+                "size": "1024x1024",
+                "quality": os.getenv("OPENAI_IMAGE_QUALITY", "medium"),
+                "output_format": "png",
+            },
+            timeout=120.0,
+        )
+        response.raise_for_status()
+        item = response.json()["data"][0]
+        if item.get("url"):
+            return item["url"]
+        if item.get("b64_json"):
+            # The local JSON database can persist this. Production deployments
+            # should upload it to Firebase Storage and save the resulting URL.
+            base64.b64decode(item["b64_json"], validate=True)
+            return f"data:image/png;base64,{item['b64_json']}"
+    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+        print(f"[AvatarService] Image generation failed: {exc}")
+    return None
+
+
 def generate_avatar(
     user_id: str,
     description: Optional[str] = None,
     photo_base64: Optional[str] = None,
+    photo_mime_type: str = "image/jpeg",
     role: str = "Software Developer"
 ) -> dict:
     """
     Ana avatar üretim fonksiyonu.
     
-    1. Fotoğraf varsa → Gemini Vision ile analiz et → RPG prompt oluştur
+    1. Fotoğraf varsa → Groq Vision ile analiz et → RPG prompt oluştur
     2. Metin varsa → RPG prompt oluştur
     3. Hiçbiri yoksa → DiceBear fallback
     
-    Şu anda Imagen/DALL-E API olmadığı için DiceBear URL döner.
-    Gerçek üretim için Imagen 3 API key gerekir.
+    OpenAI Images yapılandırılmışsa özgün görsel, aksi halde DiceBear URL döner.
     """
     result = {
         "avatar_url": None,
@@ -132,7 +154,7 @@ def generate_avatar(
 
     # Fotoğraf analizi
     if photo_base64:
-        photo_desc = analyze_photo_with_gemini(photo_base64)
+        photo_desc = analyze_photo_with_groq(photo_base64, photo_mime_type)
         final_description = photo_desc
         result["message"] = "Fotoğrafınız analiz edildi, RPG avatar stiline dönüştürüldü."
     elif description:
@@ -146,10 +168,13 @@ def generate_avatar(
     if final_description:
         prompt = build_rpg_prompt(final_description, role)
         result["prompt_used"] = prompt
-
-        # Imagen 3 API entegrasyonu buraya gelecek (API key gerektirir)
-        # Şimdilik DiceBear ile benzersiz seed kullan
         seed = hashlib.md5(prompt.encode()).hexdigest()[:16]
+        generated_url = generate_ai_image(prompt)
+        if generated_url:
+            result["avatar_url"] = generated_url
+            result["avatar_type"] = "ai_generated"
+            result["message"] = "Özgün RPG avatarınız yapay zekâ ile üretildi."
+            return result
     else:
         seed = user_id
 

@@ -128,7 +128,7 @@ export default function OnboardingPage() {
             <span className="text-gradient">Simülasyon Yapılandırılıyor</span>
           </h2>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: 1.6, marginBottom: "16px" }}>
-            LangGraph Karar Motoru ağları kuruluyor ve Gemini ile ilk hedefinize yönelik RPG karar ağacınız oluşturuluyor.
+            LangGraph Karar Motoru ağları kuruluyor ve Groq ile ilk hedefinize yönelik RPG karar ağacınız oluşturuluyor.
           </p>
           <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontStyle: "italic" }}>
             &ldquo;Evren dallanıyor, veri yolları çiziliyor...&rdquo;

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 import Link from "next/link";
-import { getProfile, getDailyQuests, verifyQuest, restUser } from "@/lib/api";
+import { createCalendarQuestEvent, getProfile, getDailyQuests, planDailyQuests, verifyQuest, restUser } from "@/lib/api";
 import RPGStatusBar from "./components/RPGStatusBar";
 import DailyBriefing from "./components/DailyBriefing";
 
@@ -278,6 +278,7 @@ export default function DashboardPage() {
   const sidebarItems: SidebarItem[] = [
     { icon: Home, label: "Dashboard", href: "/dashboard", active: true },
     { icon: BrainCircuit, label: "AI Merkez", href: "/agents", active: false },
+    { icon: Bot, label: "Coach Center", href: "/coach", active: false },
     { icon: Rocket, label: "Simulations", href: "/simulations", active: false },
     { icon: Layers3, label: "Parallel Futures", href: "/dashboard#futures", active: false },
     { icon: MapPinned, label: "Roadmap", href: "/dashboard#roadmap", active: false },
@@ -290,11 +291,23 @@ export default function DashboardPage() {
 
   const [backendProfile, setBackendProfile] = useState<any>(null);
   const [quests, setQuests] = useState<any[]>([]);
+  const [dayType, setDayType] = useState<"light" | "normal" | "busy">("normal");
+  const [focusTime, setFocusTime] = useState<"morning" | "afternoon" | "evening" | "night">("evening");
+  const [mood, setMood] = useState<"low" | "steady" | "playful" | "high">("playful");
+  const [availableMinutes, setAvailableMinutes] = useState(60);
+  const [planning, setPlanning] = useState(false);
+  const [calendarMessage, setCalendarMessage] = useState<string | null>(null);
 
   const loadDashboardData = async () => {
     try {
       const prof = await getProfile();
       setBackendProfile(prof);
+      if (prof.daily_preferences) {
+        setDayType(prof.daily_preferences.day_type || "normal");
+        setFocusTime(prof.daily_preferences.best_focus_time || "evening");
+        setMood(prof.daily_preferences.mood || "playful");
+        setAvailableMinutes(prof.daily_preferences.available_minutes || 60);
+      }
       const q = await getDailyQuests();
       setQuests(q);
     } catch (err) {
@@ -329,6 +342,41 @@ export default function DashboardPage() {
       loadDashboardData();
     } catch (err) {
       console.error("Quest doğrulama hatası:", err);
+    }
+  };
+
+  const handlePlanDailyFlow = async () => {
+    setPlanning(true);
+    try {
+      const planned = await planDailyQuests({
+        day_type: dayType,
+        best_focus_time: focusTime,
+        mood,
+        available_minutes: availableMinutes,
+        include_social: true,
+      });
+      setQuests(planned);
+    } catch (err) {
+      console.error("Gün akışı planlama hatası:", err);
+    } finally {
+      setPlanning(false);
+    }
+  };
+
+  const handleAddQuestToCalendar = async (quest: any) => {
+    try {
+      await createCalendarQuestEvent({
+        quest_id: quest.quest_id,
+        title: quest.title,
+        description: quest.description,
+        time_slot: quest.time_slot,
+        duration_minutes: quest.duration_minutes || 25,
+      });
+      setCalendarMessage("Quest takvime eklendi.");
+      setTimeout(() => setCalendarMessage(null), 2500);
+    } catch (err) {
+      setCalendarMessage("Takvim bağlı değil veya event oluşturulamadı.");
+      setTimeout(() => setCalendarMessage(null), 3000);
     }
   };
 
@@ -678,6 +726,61 @@ export default function DashboardPage() {
                 <h3 className={styles.panelTitle}>Daily quests</h3>
                 <ListTodo className={styles.panelHeaderIcon} />
               </div>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "10px",
+                  padding: "12px",
+                  marginBottom: "14px",
+                  background: "rgba(0,229,255,0.035)",
+                  border: "1px solid rgba(0,229,255,0.14)",
+                  borderRadius: "var(--radius-md)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}>
+                  <div>
+                    <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--accent-cyan)" }}>Gün Akışı</p>
+                    <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                      Görevleri bugünkü ritmine göre ayarla.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={planning}
+                    onClick={handlePlanDailyFlow}
+                    style={{ padding: "8px 10px", fontSize: "0.74rem", whiteSpace: "nowrap" }}
+                  >
+                    {planning ? "Planlanıyor..." : "Planla"}
+                  </button>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <select value={dayType} onChange={(event) => setDayType(event.target.value as any)} style={flowSelectStyle}>
+                    <option value="busy">Yoğun gün</option>
+                    <option value="normal">Normal gün</option>
+                    <option value="light">Rahat gün</option>
+                  </select>
+                  <select value={focusTime} onChange={(event) => setFocusTime(event.target.value as any)} style={flowSelectStyle}>
+                    <option value="morning">Sabah odak</option>
+                    <option value="afternoon">Öğle odak</option>
+                    <option value="evening">Akşam odak</option>
+                    <option value="night">Gece odak</option>
+                  </select>
+                  <select value={mood} onChange={(event) => setMood(event.target.value as any)} style={flowSelectStyle}>
+                    <option value="low">Düşük enerji</option>
+                    <option value="steady">Sakin mod</option>
+                    <option value="playful">Eğlenceli mod</option>
+                    <option value="high">Boss fight</option>
+                  </select>
+                  <select value={availableMinutes} onChange={(event) => setAvailableMinutes(Number(event.target.value))} style={flowSelectStyle}>
+                    <option value={30}>30 dk</option>
+                    <option value={60}>60 dk</option>
+                    <option value={90}>90 dk</option>
+                    <option value={120}>120 dk</option>
+                  </select>
+                </div>
+              </div>
               <div className={styles.progressBlock}>
                 <div className={styles.progressMetaRow}>
                   <span>Quest completion</span>
@@ -700,6 +803,11 @@ export default function DashboardPage() {
               </div>
 
               <div className={styles.questList}>
+                {calendarMessage && (
+                  <p style={{ fontSize: "0.72rem", color: "var(--accent-cyan)", marginBottom: "8px" }}>
+                    {calendarMessage}
+                  </p>
+                )}
                 {quests.map((quest) => {
                   const isCompleted = quest.status === "completed";
                   return (
@@ -719,7 +827,30 @@ export default function DashboardPage() {
                       </div>
                       <div className={styles.questBody}>
                         <p>{quest.title}</p>
-                        <span>+{quest.xp_reward} XP</span>
+                        <span>
+                          {quest.time_slot ? `${quest.time_slot} · ${quest.duration_minutes} dk · ` : ""}
+                          +{quest.xp_reward} XP
+                        </span>
+                        {quest.fun_modifier && (
+                          <small style={{ display: "block", color: "var(--accent-amber)", fontSize: "0.68rem", marginTop: "4px" }}>
+                            {quest.fun_modifier} · {quest.energy_level} enerji
+                          </small>
+                        )}
+                        {quest.why_now && (
+                          <small style={{ display: "block", color: "var(--text-muted)", fontSize: "0.68rem", marginTop: "3px", lineHeight: 1.35 }}>
+                            {quest.why_now}
+                          </small>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleAddQuestToCalendar(quest);
+                          }}
+                          style={questMiniButtonStyle}
+                        >
+                          Takvime ekle
+                        </button>
                       </div>
                     </div>
                   );
@@ -894,3 +1025,27 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+const flowSelectStyle: CSSProperties = {
+  width: "100%",
+  padding: "8px 9px",
+  background: "rgba(255,255,255,0.045)",
+  border: "1px solid var(--glass-border)",
+  borderRadius: "var(--radius-md)",
+  color: "var(--text-primary)",
+  fontFamily: "'Inter', sans-serif",
+  fontSize: "0.74rem",
+  outline: "none",
+};
+
+const questMiniButtonStyle: CSSProperties = {
+  marginTop: "8px",
+  padding: "5px 8px",
+  border: "1px solid rgba(0,229,255,0.22)",
+  borderRadius: "var(--radius-sm)",
+  background: "rgba(0,229,255,0.05)",
+  color: "var(--accent-cyan)",
+  cursor: "pointer",
+  fontFamily: "'Inter', sans-serif",
+  fontSize: "0.68rem",
+};

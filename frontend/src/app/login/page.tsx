@@ -1,24 +1,86 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginWithEmail, loginWithGoogle } from "@/lib/api";
+import { loginWithEmail, loginWithGoogle, registerWithEmail } from "@/lib/api";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (options: { client_id: string; callback: (response: { credential: string }) => void }) => void;
+          renderButton: (element: HTMLElement, options: Record<string, unknown>) => void;
+        };
+      };
+    };
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const mockAuthEnabled = process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH !== "false";
+
+  useEffect(() => {
+    if (!googleClientId) return;
+
+    const renderGoogleButton = () => {
+      if (!window.google || !googleButtonRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async ({ credential }) => {
+          setLoading(true);
+          setError(null);
+          try {
+            const data = await loginWithGoogle(credential);
+            router.replace(data.is_new_user ? "/onboarding" : "/dashboard");
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Google girişi başarısız.");
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        width: 332,
+        text: "continue_with",
+        locale: "tr",
+      });
+    };
+
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
+    if (existing) {
+      existing.addEventListener("load", renderGoogleButton, { once: true });
+      renderGoogleButton();
+      return () => existing.removeEventListener("load", renderGoogleButton);
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = renderGoogleButton;
+    document.head.appendChild(script);
+  }, [googleClientId, router]);
 
   const handleGoogleLogin = async () => {
+    if (!mockAuthEnabled) {
+      setError("Google OAuth henüz yapılandırılmamış. Yönetici NEXT_PUBLIC_GOOGLE_CLIENT_ID eklemeli.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      // Simulate Google Sign-In by requesting a token from Firebase/Google 
-      // or passing a mock identifier in fallback mode.
-      const mockGoogleIdToken = "mock_token_sedef_google";
+      const mockGoogleIdToken = "mock_token_demo_google";
       const data = await loginWithGoogle(mockGoogleIdToken);
       if (data.is_new_user) {
         router.push("/onboarding");
@@ -41,7 +103,9 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await loginWithEmail(email, password);
+      const data = isRegistering
+        ? await registerWithEmail(email, password, displayName)
+        : await loginWithEmail(email, password);
       if (data.is_new_user) {
         router.push("/onboarding");
       } else {
@@ -102,7 +166,9 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Google OAuth Button */}
+        {googleClientId ? (
+          <div ref={googleButtonRef} style={{ minHeight: "44px", display: "flex", justifyContent: "center", marginBottom: "20px" }} />
+        ) : (
         <button
           id="btn-google-login"
           disabled={loading}
@@ -133,8 +199,9 @@ export default function LoginPage() {
             <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
             <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
           </svg>
-          Google ile Giriş Yap
+          {mockAuthEnabled ? "Demo Google Girişi" : "Google OAuth Yapılandırılmamış"}
         </button>
+        )}
 
         {/* Divider */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
@@ -146,6 +213,19 @@ export default function LoginPage() {
         {/* Email / password Form */}
         <form onSubmit={handleEmailLogin}>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+            {isRegistering && (
+              <input
+                id="input-display-name"
+                type="text"
+                placeholder="Adınız"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                disabled={loading}
+                minLength={2}
+                required
+                style={inputStyle}
+              />
+            )}
             <input
               id="input-email"
               type="email"
@@ -153,6 +233,8 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
+              minLength={8}
+              required
               style={inputStyle}
             />
             <input
@@ -173,15 +255,22 @@ export default function LoginPage() {
             disabled={loading}
             style={{ width: "100%", justifyContent: "center", opacity: loading ? 0.7 : 1 }}
           >
-            {loading ? "Giriş Yapılıyor..." : "Giriş Yap"}
+            {loading ? "İşleniyor..." : isRegistering ? "Hesap Oluştur" : "Giriş Yap"}
           </button>
         </form>
 
         <p style={{ marginTop: "24px", fontSize: "0.82rem", color: "var(--text-muted)" }}>
-          Hesabın yok mu?{" "}
-          <Link href="/onboarding" style={{ color: "var(--accent-cyan)", textDecoration: "none", fontWeight: 600 }}>
-            Kayıt Ol
-          </Link>
+          {isRegistering ? "Zaten hesabın var mı? " : "Hesabın yok mu? "}
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegistering((value) => !value);
+              setError(null);
+            }}
+            style={{ color: "var(--accent-cyan)", border: 0, background: "transparent", cursor: "pointer", fontWeight: 600 }}
+          >
+            {isRegistering ? "Giriş Yap" : "Kayıt Ol"}
+          </button>
         </p>
       </div>
     </div>

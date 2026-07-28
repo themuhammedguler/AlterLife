@@ -7,10 +7,10 @@ import os
 import hashlib
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.v1.auth_utils import get_current_user_id
-from api.v1.database import get_user, save_user
+from api.v1.database import delete_user_data, get_user, save_user
 from api.v1.services.simulation_service import generate_initial_tree_data
 from api.v1.services.avatar_service import generate_avatar as avatar_service_generate
 
@@ -38,6 +38,7 @@ class OnboardingRequest(BaseModel):
 class AvatarGenerateRequest(BaseModel):
     description: Optional[str] = None   # Text-to-Image: fiziksel betimleme
     photo_base64: Optional[str] = None  # Image-to-Image: fotoğraf
+    photo_mime_type: str = Field(default="image/jpeg", pattern=r"^image/(jpeg|png|webp)$")
 
 
 class UserProfileResponse(BaseModel):
@@ -54,6 +55,14 @@ class UserProfileResponse(BaseModel):
     focus: int = 100
     max_energy: int = 100
     max_focus: int = 100
+    daily_preferences: Dict[str, Any] = Field(default_factory=dict)
+
+
+class UserProfileUpdate(BaseModel):
+    display_name: Optional[str] = Field(default=None, min_length=2, max_length=80)
+    role: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    experience_years: Optional[int] = Field(default=None, ge=0, le=80)
+    daily_preferences: Optional[Dict[str, Any]] = None
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -99,6 +108,23 @@ async def onboarding(payload: OnboardingRequest, user_id: str = Depends(get_curr
         "freeGoal": payload.freeGoal or "2 yıl içinde yurt dışında çalışmak"
     }
 
+    # Every user receives a persistent, directly displayable avatar during
+    # onboarding. OpenAI Images is used when configured; otherwise the same
+    # user-specific prompt deterministically produces a unique DiceBear image.
+    if not profile_data["avatarUrl"]:
+        identity_seed = hashlib.sha256(user_id.encode("utf-8")).hexdigest()[:12]
+        avatar_description = (
+            f"Unique futuristic RPG explorer, role: {role}, "
+            f"goal: {profile_data['freeGoal']}, identity seed: {identity_seed}. "
+            "Create a visually distinctive face, outfit, color palette and accessories."
+        )
+        avatar_result = avatar_service_generate(
+            user_id=user_id,
+            description=avatar_description,
+            role=role,
+        )
+        profile_data["avatarUrl"] = avatar_result.get("avatar_url")
+
     user_data["profile"] = profile_data
     
     # Initialize or reset RPG state
@@ -125,14 +151,15 @@ async def onboarding(payload: OnboardingRequest, user_id: str = Depends(get_curr
         "status": "success",
         "message": "Onboarding completed, initial decision tree generated.",
         "user_id": user_id,
-        "simulation_id": f"sim_{user_id}"
+        "simulation_id": f"sim_{user_id}",
+        "avatar_url": profile_data.get("avatarUrl"),
     }
 
 
 @router.post("/avatar/generate", summary="AI RPG avatar üretimi")
 async def generate_avatar(payload: AvatarGenerateRequest, user_id: str = Depends(get_current_user_id)):
     """
-    Metin veya fotoğraftan Gemini Vision + DiceBear ile fütüristik/RPG avatarı üretir.
+    Metin veya fotoğraftan Groq Vision + DiceBear ile fütüristik/RPG avatarı üretir.
     """
     user_data = get_user(user_id) or {}
     role = user_data.get("profile", {}).get("role", "Software Developer")
@@ -141,6 +168,7 @@ async def generate_avatar(payload: AvatarGenerateRequest, user_id: str = Depends
         user_id=user_id,
         description=payload.description,
         photo_base64=payload.photo_base64.split(",")[-1] if payload.photo_base64 else None,
+        photo_mime_type=payload.photo_mime_type,
         role=role
     )
 
@@ -209,7 +237,51 @@ async def get_profile(user_id: str = Depends(get_current_user_id)):
         focus=rpg_state.get("focus", 100),
         max_energy=rpg_state.get("max_energy", 100),
         max_focus=rpg_state.get("max_focus", 100),
+        daily_preferences=user_data.get("dailyPreferences", {}),
     )
+
+
+@router.patch("/profile", response_model=UserProfileResponse, summary="Kullanıcı profilini güncelle")
+async def update_profile(payload: UserProfileUpdate, user_id: str = Depends(get_current_user_id)):
+    user_data = get_user(user_id)
+    if not user_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kullanıcı bulunamadı.")
+
+    if payload.display_name is not None:
+        user_data["displayName"] = payload.display_name.strip()
+    profile = user_data.setdefault("profile", {})
+    if payload.role is not None:
+        profile["role"] = payload.role.strip()
+    if payload.experience_years is not None:
+        profile["experienceYears"] = payload.experience_years
+    if payload.daily_preferences is not None:
+        user_data["dailyPreferences"] = {
+            "day_type": payload.daily_preferences.get("day_type", "normal"),
+            "best_focus_time": payload.daily_preferences.get("best_focus_time", "evening"),
+            "mood": payload.daily_preferences.get("mood", "playful"),
+            "available_minutes": int(payload.daily_preferences.get("available_minutes", 60)),
+            "include_social": bool(payload.daily_preferences.get("include_social", True)),
+        }
+    save_user(user_id, user_data)
+    return await get_profile(user_id)
+
+
+@router.delete("/account", summary="Hesabı ve kullanıcı verilerini kalıcı olarak sil")
+async def delete_account(user_id: str = Depends(get_current_user_id)):
+    if not get_user(user_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kullanıcı bulunamadı.")
+    try:
+        from api.v1.database import get_db_mode
+        if get_db_mode() == "firestore":
+            from firebase_admin import auth as firebase_auth
+            firebase_auth.delete_user(user_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Kimlik hesabı silinemedi: {exc}",
+        ) from exc
+    delete_user_data(user_id)
+    return {"status": "deleted"}
 
 
 @router.post("/rest", summary="😴 Dinlenme – Energy & Focus yenile")
