@@ -14,6 +14,11 @@ PERSONALITY_ARCHETYPES = {
     "Pratik": "Sonuca odaklıdır. Duygusal kararlar değil, veri temelli seçimler yapar.",
 }
 
+# Display emoji for archetypes (used for UI-friendly labels)
+ARCHETYPE_EMOJI = {
+    "Pratik": "🛠️",
+}
+
 MOTIVATION_TYPES = ["Para / Finansal Güvenlik", "Özgürlük / Bağımsızlık", "Prestij / Tanınma", "Anlam / Sosyal Etki", "Aile / İstikrar"]
 LEARNING_STYLES = ["Videolardan", "Yaparak / Uygulayarak", "Kitaptan / Okuyarak", "Mentörden"]
 
@@ -149,6 +154,10 @@ Bu kullanıcı için kapsamlı bir profil analizi yap. Şu alanları doldur:
                     "recommended_agents", "motivational_message",
                 ),
             )
+            # attach a display label with emoji when available
+            archetype_name = result.get("archetype")
+            emoji = ARCHETYPE_EMOJI.get(archetype_name, "")
+            result["archetype_display"] = f"{emoji} {archetype_name}".strip() if archetype_name else archetype_name
             result["source"] = "groq"
             return result
         except Exception as e:
@@ -163,4 +172,7 @@ Bu kullanıcı için kapsamlı bir profil analizi yap. Şu alanları doldur:
     goal = user_profile.get("freeGoal", "hedefin")
     result["motivational_message"] = result["motivational_message"].replace("hedefine", f"'{goal}' hedefine")
     result["source"] = "heuristic_mock"
+    # add display label with emoji for UI use
+    emoji = ARCHETYPE_EMOJI.get(archetype, "")
+    result["archetype_display"] = f"{emoji} {archetype}".strip()
     return result

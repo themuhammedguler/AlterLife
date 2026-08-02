@@ -147,6 +147,19 @@ export async function getSimulationTree() {
   return fetchWithAuth(`/api/v1/simulations/sim_${userId}/tree`);
 }
 
+export async function saveSimulationViewState(payload: {
+  last_selected_node_id: string | null;
+  branch_checkpoints: Record<string, string>;
+  suggestion_history: Record<string, string[]>;
+  map_mode: "focus" | "all";
+}) {
+  const userId = typeof window !== "undefined" ? localStorage.getItem("alterlife_user_id") || "dev_user_001" : "dev_user_001";
+  return fetchWithAuth(`/api/v1/simulations/sim_${userId}/view-state`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function branchSimulation(parentNodeId: string, decisionText: string) {
   const userId = typeof window !== "undefined" ? localStorage.getItem("alterlife_user_id") || "dev_user_001" : "dev_user_001";
   return fetchWithAuth(`/api/v1/simulations/sim_${userId}/branch`, {

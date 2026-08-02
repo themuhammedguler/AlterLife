@@ -82,11 +82,8 @@ export default function LoginPage() {
     try {
       const mockGoogleIdToken = "mock_token_demo_google";
       const data = await loginWithGoogle(mockGoogleIdToken);
-      if (data.is_new_user) {
-        router.push("/onboarding");
-      } else {
-        router.push("/dashboard");
-      }
+      const requestedRoute = new URLSearchParams(window.location.search).get("next");
+      router.push(requestedRoute || (data.is_new_user ? "/onboarding" : "/dashboard"));
     } catch (err: any) {
       setError(err.message || "Google ile giriş yaparken bir hata oluştu.");
     } finally {

@@ -11,7 +11,7 @@ const navLinks = [
   { href: "/agents",      label: "AI Merkez" },
   { href: "/coach",       label: "Coach" },
   { href: "/skills",      label: "Yetenekler" },
-  { href: "/library",     label: "Kutuphane" },
+  { href: "/library",     label: "Kütüphane" },
   { href: "/analytics",   label: "Analitik" },
   { href: "/community",   label: "Topluluk" },
   { href: "/notifications", label: "Bildirimler" },
@@ -31,8 +31,7 @@ export default function Navbar() {
   if (
     pathname === "/login" ||
     pathname === "/onboarding" ||
-    pathname === "/" ||
-    pathname.startsWith("/dashboard")
+    pathname === "/"
   ) {
     return null;
   }

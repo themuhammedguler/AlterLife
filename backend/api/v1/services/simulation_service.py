@@ -201,7 +201,7 @@ def generate_branch_node(state: SimulationState) -> SimulationState:
     except Exception:
         print("[LangGraph] Falling back to Mock branch generation")
         data = {
-            "decision_name": f"Karar: {decision_text[:30]}",
+            "decision_name": f"Karar: {decision_text}",
             "description": f"Verdiğiniz '{decision_text}' kararı ile yeni bir aşamaya geçtiniz. Hedef: {tree.get('initial_target')}",
             "metrics_modifier": { "savings": random.randint(-500, 500), "stress": random.randint(-15, 25), "happiness": random.randint(-10, 20), "career": random.randint(-5, 15) },
             "milestones": ["Yeni sürecin analizini yap", "Gerekli kaynakları topla"]
@@ -216,7 +216,10 @@ def generate_branch_node(state: SimulationState) -> SimulationState:
     new_node = {
         "node_id": f"node_whatif_{uuid.uuid4().hex[:6]}",
         "parent": parent_node_id,
-        "decision_name": data.get("decision_name", "Yeni Karar"),
+        # The user's decision is the roadmap label. Never shorten it here:
+        # cards can handle wrapping, while truncated persisted text cannot be
+        # recovered later.
+        "decision_name": f"Karar: {decision_text}",
         "metrics": {
             "monthly_savings": new_savings,
             "stress_level": new_stress,

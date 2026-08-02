@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { branchSimulation, generateSimulation, getBranchActionPlan, getSimulationTree, runStressTest, setActiveGoal } from "@/lib/api";
+import { branchSimulation, generateSimulation, getBranchActionPlan, getSimulationTree, runStressTest, saveSimulationViewState, setActiveGoal } from "@/lib/api";
+import styles from "./page.module.css";
 
 interface NodeData {
   id: string;
@@ -10,6 +11,8 @@ interface NodeData {
   metrics: { savings: number; stress: number; happiness: number; career: number };
   desc: string;
   color: string;
+  isSuggestion?: boolean;
+  suggestionText?: string;
 }
 
 type ActionPlan = {
@@ -38,19 +41,298 @@ const DEFAULT_NODE: NodeData = {
   color: "var(--accent-cyan)"
 };
 
+function getCompleteDecisionLabel(node: { decision_name: string; description?: string | null }) {
+  const storedLabel = node.decision_name || "Yeni Karar";
+  if (!storedLabel.startsWith("Karar:")) return storedLabel;
+
+  // Older roadmap entries were persisted with a 30-character title. Their
+  // description still contains the complete user decision, so recover it.
+  const recovered = node.description?.match(/Verdiğiniz ['‘]([\s\S]+?)['’] kararı/)?.[1];
+  return recovered ? `Karar: ${recovered}` : storedLabel;
+}
+
+function getNodeDepth(node: NodeData, tree: NodeData[]) {
+  let depth = 0;
+  let current: NodeData | undefined = node;
+  const visited = new Set<string>();
+
+  while (current?.parent && !visited.has(current.id)) {
+    visited.add(current.id);
+    depth += 1;
+    current = tree.find((candidate) => candidate.id === current?.parent);
+  }
+
+  return depth;
+}
+
+function getTopLevelBranchId(node: NodeData, tree: NodeData[]) {
+  let current: NodeData | undefined = node;
+  const visited = new Set<string>();
+
+  while (current?.parent && !visited.has(current.id)) {
+    visited.add(current.id);
+    const parent = tree.find((candidate) => candidate.id === current?.parent);
+    if (!parent || parent.parent === null) return current.id;
+    current = parent;
+  }
+
+  return null;
+}
+
+function isDescendantOf(node: NodeData, ancestorId: string, tree: NodeData[]) {
+  let current: NodeData | undefined = node;
+  const visited = new Set<string>();
+
+  while (current && !visited.has(current.id)) {
+    if (current.id === ancestorId) return true;
+    visited.add(current.id);
+    current = current.parent ? tree.find((candidate) => candidate.id === current?.parent) : undefined;
+  }
+
+  return false;
+}
+
+function normalizeDecisionText(value: string) {
+  return (value || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/^öneri:\s*/i, "")
+    .replace(/^karar:\s*/i, "")
+    .replace(/[“”"'.,!?()\[\]{}:;]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function shortenContext(value: string, maxWords = 8) {
+  const words = normalizeDecisionText(value).split(" ").filter(Boolean);
+  return words.slice(0, maxWords).join(" ");
+}
+
+const SYNTHETIC_SIGNATURES = [
+  "bu kararın sonucunu ölçmek için net bir başarı kriteri belirlemek",
+  "en büyük riski azaltacak tek somut görevi takvime eklemek",
+  "mevcut sonuçlara göre alternatif bir sonraki kilometre taşı seçmek",
+  "için 7 günlük küçük bir test planı oluşturmak",
+  "yolundaki en büyük riski tek hamlede azaltmak",
+  "sonrasında atılacak bir sonraki somut adımı netleştirmek",
+];
+
+function isSyntheticDecisionLabel(value: string) {
+  const normalized = normalizeDecisionText(value);
+  if (!normalized) return true;
+  if (normalized.length < 16) return true;
+  if (normalized.startsWith("bu seçeneği") || normalized.startsWith("öneri")) return true;
+  return SYNTHETIC_SIGNATURES.some((signature) => normalized.includes(signature));
+}
+
+function getStableSuggestionContext(node: NodeData, tree: NodeData[]) {
+  let current: NodeData | undefined = node;
+  const visited = new Set<string>();
+
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id);
+    if (!isSyntheticDecisionLabel(current.label)) {
+      return shortenContext(current.label) || "bu adım";
+    }
+    current = current.parent ? tree.find((candidate) => candidate.id === current?.parent) : undefined;
+  }
+
+  if (node.metrics.stress >= 60) return "stresi yönetmek";
+  if (node.metrics.savings <= 400) return "nakit akışını güçlendirmek";
+  if (node.metrics.career <= 35) return "kariyer ivmesini artırmak";
+  if (node.metrics.happiness <= 55) return "dengeyi toparlamak";
+  return "hedefe ilerlemek";
+}
+
+function getPhaseCandidates(context: string, depth: number, metrics: NodeData["metrics"]) {
+  if (depth <= 1) {
+    return [
+      `${context} için düşük riskli 14 günlük bir deneme başlatmak`,
+      `${context} için maliyet ve zaman hesabını netleştirmek`,
+      `${context} için dışarıdan bir uzman görüşü almak`,
+    ];
+  }
+
+  if (metrics.stress >= 60) {
+    return [
+      "Stresi düşürmek için haftalık yükü sadeleştiren bir plan yapmak",
+      "Baskıyı artıran tek darboğazı tespit edip kaldırmak",
+      "Kararı sürdürülebilir kılmak için ritmi yeniden ayarlamak",
+    ];
+  }
+
+  if (metrics.savings <= 400) {
+    return [
+      "Nakit akışını rahatlatacak kısa vadeli bir gelir adımı eklemek",
+      "Bu dalın masrafını azaltacak mini bütçe revizyonu yapmak",
+      "Finansal riski sınırlayan bir B planı hazırlamak",
+    ];
+  }
+
+  if (depth <= 3) {
+    return [
+      `${context} için ölçülebilir bir başarı metriği tanımlamak`,
+      `${context} için en kritik riski azaltan tek aksiyonu planlamak`,
+      `${context} için bir sonraki somut kilometre taşını seçmek`,
+    ];
+  }
+
+  if (depth <= 5) {
+    return [
+      `${context} tarafında görünür bir çıktı üretmek`,
+      `${context} tarafında hızlanmak için bir darboğazı kaldırmak`,
+      `${context} tarafında bir haftalık ilerleme raporu çıkarmak`,
+    ];
+  }
+
+  return [
+    `${context} yolunu sadeleştirip tekrarlayan adımları temizlemek`,
+    `${context} için uzun vadeli sürdürülebilirlik kontrolü yapmak`,
+    `${context} için alternatif bir rota ile kıyaslama denemesi yapmak`,
+  ];
+}
+
+function buildNextSuggestions(node: NodeData, tree: NodeData[]) {
+  const depth = getNodeDepth(node, tree);
+  const decision = normalizeDecisionText(node.label);
+  const context = getStableSuggestionContext(node, tree);
+  const existingChildren = tree
+    .filter((candidate) => candidate.parent === node.id)
+    .map((candidate) => normalizeDecisionText(candidate.label));
+
+  let candidates: string[];
+
+  if (node.id === "node_root") {
+    candidates = [
+      "Yarı zamanlı freelance işlerle portfolyoyu büyütmek",
+      "Mevcut işte kalıp hedef role yönelik sertifikaları tamamlamak",
+      "Hedefe doğrudan geçiş için üç aylık yoğun bir plan uygulamak",
+    ];
+  } else if (decision.includes("iş başvuru") || decision.includes("vize")) {
+    candidates = [
+      "Almanca CV ve LinkedIn profilini hedef role göre tamamlamak",
+      "EU Blue Card uygunluğunu maaş eşiği ve diploma denkliğiyle kontrol etmek",
+      "Vize sponsorluğu sunan şirketleri ayrı bir başvuru listesinde toplamak",
+    ];
+  } else if (decision.includes("cv") || decision.includes("linkedin")) {
+    candidates = [
+      "On hedef şirket belirleyip her biri için kişiselleştirilmiş başvuru hazırlamak",
+      "İki Almanya recruiter’ı ile tanışma görüşmesi planlamak",
+      "CV’deki en güçlü üç projeyi İngilizce vaka çalışmasına dönüştürmek",
+    ];
+  } else if (decision.includes("blue card") || decision.includes("diploma") || decision.includes("denklik")) {
+    candidates = [
+      "Anabin üzerinden diploma denkliğini doğrulayıp gerekli belgeleri toplamak",
+      "Blue Card maaş eşiğini karşılayan ilanları filtrelemek",
+      "Eksik resmi belgeler için tercüme ve apostil takvimi oluşturmak",
+    ];
+  } else if (decision.includes("hedef şirket") || decision.includes("kişiselleştirilmiş başvuru") || decision.includes("sponsor")) {
+    candidates = [
+      "İlk beş başvuruyu gönderip iki hafta boyunca dönüş oranını ölçmek",
+      "Hedef rol için teknik mülakat ve sistem tasarımı provası yapmak",
+      "Başvuru yanıtı gelmezse CV ve rol hedefini yeniden kalibre etmek",
+    ];
+  } else if (decision.includes("recruiter") || decision.includes("tanışma görüşmesi") || decision.includes("network")) {
+    candidates = [
+      "Recruiter geri bildirimine göre CV ve maaş beklentisini güncellemek",
+      "Berlin teknoloji topluluğundan iki çevrim içi etkinliğe katılmak",
+      "Bir referans görüşmesi için Almanya’da çalışan bir uzmanla bağlantı kurmak",
+    ];
+  } else if (decision.includes("mülakat") || decision.includes("sistem tasarımı")) {
+    candidates = [
+      "İki deneme mülakatı yapıp eksik konu listesini çıkarmak",
+      "Hedef şirket formatına uygun bir teknik proje sunumu hazırlamak",
+      "Mülakat haftası için çalışma, dinlenme ve takip planı oluşturmak",
+    ];
+  } else if (decision.includes("anabin") || decision.includes("apostil") || decision.includes("resmi belge")) {
+    candidates = [
+      "Tamamlanan belgeleri tek bir dijital başvuru dosyasında toplamak",
+      "Konsolosluk ve iş sözleşmesi için gereken eksik evrakları doğrulamak",
+      "Belge süreci uzarsa kullanılacak alternatif vize rotasını araştırmak",
+    ];
+  } else if (decision.includes("maaş eşiği") || decision.includes("ilanları filtre")) {
+    candidates = [
+      "Maaş aralığı uygun on ilanı beceri gereksinimlerine göre sıralamak",
+      "Eksik görülen en sık iki beceri için kısa bir geliştirme sprinti başlatmak",
+      "Teklif pazarlığında kullanılacak piyasa maaşı verilerini toplamak",
+    ];
+  } else if (decision.includes("şehir") || decision.includes("berlin") || decision.includes("köln") || decision.includes("münih")) {
+    candidates = [
+      "Berlin, Hamburg ve Köln’ü kira ile iş ilanı sayısına göre karşılaştırmak",
+      "En uygun iki şehir için aylık yaşam bütçesi çıkarmak",
+      "Seçilen şehirlerdeki teknoloji toplulukları ve şirket kümelerini araştırmak",
+    ];
+  } else if (decision.includes("bütçe") || decision.includes("kira") || decision.includes("birikim")) {
+    candidates = [
+      "Altı aylık acil durum fonu için aylık tasarruf hedefi belirlemek",
+      "Taşınma, depozito ve ilk ay giderlerini kalem kalem hesaplamak",
+      "Bütçe açığını kapatmak için geçici uzaktan gelir planı oluşturmak",
+    ];
+  } else if (decision.includes("dil") || decision.includes("almanca")) {
+    candidates = [
+      "B1 sınavı için on iki haftalık çalışma ve deneme takvimi hazırlamak",
+      "İngilizce çalışma imkânı sunan rolleri ayrı bir listede araştırmak",
+      "Haftalık konuşma pratiği için bir dil partneri bulmak",
+    ];
+  } else if (decision.includes("uzaktan") || decision.includes("freelance")) {
+    candidates = [
+      "Uluslararası müşteriye uygun iki portfolyo projesini yayına almak",
+      "Altı aylık uzaktan çalışma hedefi için müşteri ve gelir planı hazırlamak",
+      "Uzaktan deneyimi Almanya iş başvurularına bağlayacak referanslar toplamak",
+    ];
+  } else if (decision.includes("master") || decision.includes("yüksek lisans") || decision.includes("üniversite")) {
+    candidates = [
+      "Programları ücret, burs ve mezuniyet sonrası iş imkânına göre karşılaştırmak",
+      "Yüksek lisans sırasında Werkstudent olarak çalışma seçeneklerini araştırmak",
+      "Dil belgesi, referans ve başvuru tarihlerini içeren takvim hazırlamak",
+    ];
+  } else if (node.id.includes("path_1") || decision.includes("almanya") || decision.includes("göç")) {
+    candidates = [
+      "Hedef şehirleri yaşam maliyeti ve iş fırsatlarına göre karşılaştırmak",
+      "Dil seviyesi ile vize uygunluğunu resmi kaynaklardan doğrulamak",
+      "Taşınmadan önce altı ay uluslararası uzaktan deneyim kazanmak",
+    ];
+  } else {
+    candidates = getPhaseCandidates(context, depth, node.metrics);
+  }
+
+  const uniqueCandidates = Array.from(new Set(candidates.map((candidate) => candidate.trim())));
+  const available = uniqueCandidates.filter(
+    (candidate) => !existingChildren.includes(normalizeDecisionText(candidate))
+  );
+  const source = available.length >= 2 ? available : uniqueCandidates;
+  const suggestions = source.length >= 2 ? source : [
+    "Bu adım için küçük bir deneme planı başlatmak",
+    "Bu adım için riski azaltan tek hamleyi belirlemek",
+  ];
+
+  return { optionA: suggestions[0], optionB: suggestions[1] };
+}
+
 export default function SimulationsPage() {
   const [tree, setTree] = useState<NodeData[]>([DEFAULT_NODE]);
   const [selectedNode, setSelectedNode] = useState<NodeData>(DEFAULT_NODE);
   const [whatIfText, setWhatIfText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [aiSuggestions, setAiSuggestions] = useState<{ optionA: string; optionB: string } | null>(null);
   const [actionPlan, setActionPlan] = useState<ActionPlan | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [friendCode, setFriendCode] = useState("");
   const [activeGoalMessage, setActiveGoalMessage] = useState<string | null>(null);
+  const [suggestionHistory, setSuggestionHistory] = useState<Record<string, string[]>>({});
+  const [mapMode, setMapMode] = useState<"focus" | "all">("focus");
+  const [branchCheckpoints, setBranchCheckpoints] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(window.localStorage.getItem("alterlife_simulation_checkpoints") || "{}");
+    } catch {
+      return {};
+    }
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapViewportRef = useRef<HTMLDivElement>(null);
+  const viewStateLoadedRef = useRef(false);
+  const branchRequestRef = useRef(false);
 
   // Load Tree from Backend
   const loadTree = async () => {
@@ -86,7 +368,7 @@ export default function SimulationsPage() {
           
           return {
             id: n.node_id,
-            label: n.decision_name,
+            label: getCompleteDecisionLabel(n),
             parent: n.parent,
             metrics: {
               savings: n.metrics.monthly_savings,
@@ -99,10 +381,19 @@ export default function SimulationsPage() {
           };
         });
         setTree(mapped);
+        setBranchCheckpoints(data.branch_checkpoints || {});
+        setSuggestionHistory(data.suggestion_history || {});
+        setMapMode(data.map_mode === "all" ? "all" : "focus");
         
-        // Retain selection if valid, otherwise select root
-        const found = mapped.find(n => n.id === selectedNode.id);
-        setSelectedNode(found || mapped[0]);
+        // Backend state is authoritative; localStorage remains only as a
+        // backwards-compatible fallback for older sessions.
+        const lastNodeId = data.last_selected_node_id || (typeof window !== "undefined"
+          ? window.localStorage.getItem("alterlife_simulation_last_node")
+          : null);
+        const lastNode = mapped.find((node) => node.id === lastNodeId);
+        const retainedNode = mapped.find((node) => node.id === selectedNode.id);
+        setSelectedNode(lastNode || retainedNode || mapped[0]);
+        viewStateLoadedRef.current = true;
       }
     } catch (err: any) {
       setError(err.message || "Simülasyon ağacı yüklenemedi.");
@@ -115,45 +406,75 @@ export default function SimulationsPage() {
     loadTree();
   }, []);
 
-  // Generate Suggestions based on Selected Node
+  const aiSuggestions = useMemo(
+    () => buildNextSuggestions(selectedNode, tree),
+    [selectedNode, tree]
+  );
+
   useEffect(() => {
-    if (selectedNode.id === "node_root") {
-      setAiSuggestions({
-        optionA: "Yarı zamanlı freelance işlerle portfolyoyu büyütmek",
-        optionB: "Mevcut işinde kalıp bulut sertifikaları almak",
-      });
-    } else if (selectedNode.id.includes("path_1")) {
-      setAiSuggestions({
-        optionA: "Berlin yerine yaşam maliyeti düşük Köln veya Münih'i seçmek",
-        optionB: "Almanya öncesi 6 ay Polonya veya Estonya'da tecrübe kazanmak",
-      });
-    } else if (selectedNode.id.includes("path_2")) {
-      setAiSuggestions({
-        optionA: "Master yaparken yarı zamanlı çalışıp (Werkstudent) tecrübe kazanmak",
-        optionB: "İngilizce eğitim veren devlet üniversitelerini araştırmak",
-      });
-    } else {
-      setAiSuggestions({
-        optionA: "Bu adımı 6 ay erteleyip bütçeyi %25 artırmak",
-        optionB: "Alanın uzmanlarıyla LinkedIn'de networking yapmak",
-      });
-    }
-  }, [selectedNode]);
+    setSuggestionHistory((previous) => {
+      if (previous[selectedNode.id]) return previous;
+      return {
+        ...previous,
+        [selectedNode.id]: [aiSuggestions.optionA, aiSuggestions.optionB],
+      };
+    });
+  }, [aiSuggestions, selectedNode.id]);
 
   useEffect(() => {
     setActionPlan(null);
   }, [selectedNode.id]);
 
+  useEffect(() => {
+    const topLevelBranchId = getTopLevelBranchId(selectedNode, tree);
+    if (!topLevelBranchId || selectedNode.isSuggestion) return;
+
+    window.localStorage.setItem("alterlife_simulation_last_node", selectedNode.id);
+    setBranchCheckpoints((previous) => {
+      if (previous[topLevelBranchId] === selectedNode.id) return previous;
+      const next = { ...previous, [topLevelBranchId]: selectedNode.id };
+      window.localStorage.setItem("alterlife_simulation_checkpoints", JSON.stringify(next));
+      return next;
+    });
+  }, [selectedNode, tree]);
+
+  useEffect(() => {
+    if (!viewStateLoadedRef.current || selectedNode.isSuggestion) return;
+    const timer = window.setTimeout(() => {
+      saveSimulationViewState({
+        last_selected_node_id: selectedNode.id,
+        branch_checkpoints: branchCheckpoints,
+        suggestion_history: suggestionHistory,
+        map_mode: mapMode,
+      }).catch((err) => {
+        setError(err.message || "Yol haritasının görünümü kaydedilemedi.");
+      });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [branchCheckpoints, mapMode, selectedNode.id, selectedNode.isSuggestion, suggestionHistory]);
+
   // Handle Add Branch (What If)
-  const handleAddNewBranch = async (text: string) => {
-    if (!text.trim()) return;
+  const handleAddNewBranch = async (text: string, parentNodeId = selectedNode.id) => {
+    const cleanText = text.replace(/^Öneri:\s*/i, "").trim();
+    if (!cleanText || branchRequestRef.current) return;
+
+    const normalizedInput = normalizeDecisionText(cleanText);
+    const hasDuplicateChild = tree
+      .filter((node) => node.parent === parentNodeId)
+      .some((node) => normalizeDecisionText(node.label) === normalizedInput);
+    if (hasDuplicateChild) {
+      setError("Bu adım zaten mevcut. Farklı bir seçenek deneyin.");
+      return;
+    }
+
+    branchRequestRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      const newNode = await branchSimulation(selectedNode.id, text);
+      const newNode = await branchSimulation(parentNodeId, cleanText);
       const mappedNode: NodeData = {
         id: newNode.node_id,
-        label: newNode.decision_name,
+        label: getCompleteDecisionLabel(newNode),
         parent: newNode.parent,
         metrics: {
           savings: newNode.metrics.monthly_savings,
@@ -166,14 +487,83 @@ export default function SimulationsPage() {
       };
 
       setTree(prev => [...prev, mappedNode]);
+      setSuggestionHistory((previous) => ({
+        ...previous,
+        [parentNodeId]: (previous[parentNodeId] || []).filter(
+          (suggestion) => normalizeDecisionText(suggestion) !== normalizeDecisionText(cleanText)
+        ),
+      }));
       setSelectedNode(mappedNode);
       setWhatIfText("");
     } catch (err: any) {
       setError(err.message || "Yeni dal oluşturulamadı.");
     } finally {
+      branchRequestRef.current = false;
       setLoading(false);
     }
   };
+
+  const visualTree = useMemo(() => {
+    const activePath: NodeData[] = [];
+    let current: NodeData | undefined = selectedNode;
+    const visited = new Set<string>();
+
+    while (current && !visited.has(current.id)) {
+      activePath.unshift(current);
+      visited.add(current.id);
+      current = current.parent ? tree.find((node) => node.id === current?.parent) : undefined;
+    }
+
+    const activePathIds = new Set(activePath.map((node) => node.id));
+    const visibleNodeIds = new Set(activePathIds);
+
+    // Keep focus mode compact: show the chosen continuation plus at most one
+    // sibling at previous steps. At the current step show at most two existing
+    // children; fresh AI options are rendered separately as preview nodes.
+    activePath.forEach((pathNode, pathIndex) => {
+      const children = tree.filter((node) => node.parent === pathNode.id);
+      const activeChild = activePath[pathIndex + 1];
+
+      if (activeChild) {
+        visibleNodeIds.add(activeChild.id);
+        const sibling = children.find((node) => node.id !== activeChild.id);
+        if (sibling) visibleNodeIds.add(sibling.id);
+        return;
+      }
+
+      children.slice(-2).forEach((node) => visibleNodeIds.add(node.id));
+    });
+
+    tree
+      .filter((node) => node.parent === null)
+      .forEach((node) => visibleNodeIds.add(node.id));
+
+    const visibleTree = mapMode === "all"
+      ? tree
+      : tree.filter((node) => visibleNodeIds.has(node.id));
+    const previewNodes: NodeData[] = [];
+
+    Object.entries(suggestionHistory).forEach(([parentId, suggestions]) => {
+      if (mapMode === "focus" && !activePathIds.has(parentId)) return;
+      const parent = tree.find((node) => node.id === parentId);
+      if (!parent) return;
+
+      suggestions.forEach((suggestion, index) => {
+        previewNodes.push({
+          id: `suggestion_${parentId}_${index}_${suggestion.slice(0, 12)}`,
+          label: `Öneri: ${suggestion}`,
+          parent: parentId,
+          metrics: parent.metrics,
+          desc: "Henüz seçilmemiş alternatif sonraki adım.",
+          color: "var(--accent-amber)",
+          isSuggestion: true,
+          suggestionText: suggestion,
+        });
+      });
+    });
+
+    return [...visibleTree, ...previewNodes];
+  }, [mapMode, selectedNode, suggestionHistory, tree]);
 
   // Handle Black Swan Stress Test
   const handleStressTest = async () => {
@@ -240,53 +630,80 @@ export default function SimulationsPage() {
     return path;
   };
 
-  // Nodes at Depth in Tree
-  const getNodesAtDepth = (depth: number): NodeData[] => {
-    const path = getPathBreadcrumbs();
-    if (depth === 0) {
-      return tree.filter((n) => n.parent === null);
-    }
-    const ancestor = path[depth - 1];
-    if (!ancestor) return [];
-    return tree.filter((n) => n.parent === ancestor.id);
-  };
-
   // Coordinates Layout Calculation
   const layoutData = useMemo(() => {
-    const columns: NodeData[][] = [];
-    const breadcrumbs = getPathBreadcrumbs();
-    
-    // Calculate how many columns we need
-    const maxDepth = Math.max(1, breadcrumbs.length);
-    for (let d = 0; d <= maxDepth; d++) {
-      const nodes = getNodesAtDepth(d);
-      if (nodes.length > 0) {
-        columns.push(nodes);
+    // Group every node in the full tree by its real depth. The previous layout
+    // followed only the selected breadcrumb, hiding descendants of sibling
+    // branches even though they were stored correctly.
+    const nodeById = new Map(visualTree.map((node) => [node.id, node]));
+    const depthCache = new Map<string, number>();
+
+    const resolveDepth = (node: NodeData, visiting = new Set<string>()): number => {
+      const cached = depthCache.get(node.id);
+      if (cached !== undefined) return cached;
+      if (!node.parent || !nodeById.has(node.parent)) {
+        depthCache.set(node.id, 0);
+        return 0;
       }
-    }
+      if (visiting.has(node.id)) {
+        depthCache.set(node.id, 0);
+        return 0;
+      }
+
+      const nextVisiting = new Set(visiting);
+      nextVisiting.add(node.id);
+      const parent = nodeById.get(node.parent);
+      const depth = parent ? resolveDepth(parent, nextVisiting) + 1 : 0;
+      depthCache.set(node.id, depth);
+      return depth;
+    };
+
+    const columnsByDepth = new Map<number, NodeData[]>();
+    visualTree.forEach((node) => {
+      const depth = resolveDepth(node);
+      const column = columnsByDepth.get(depth) || [];
+      column.push(node);
+      columnsByDepth.set(depth, column);
+    });
+
+    const maxDepth = Math.max(0, ...columnsByDepth.keys());
+    const columns: NodeData[][] = Array.from(
+      { length: maxDepth + 1 },
+      (_, depth) => columnsByDepth.get(depth) || []
+    );
 
     const nodeCoords: { [id: string]: { x: number; y: number } } = {};
     const colWidth = 260;
     const colGap = 80;
+    const rowHeight = 96;
     
     columns.forEach((nodes, colIdx) => {
       const colX = colIdx * (colWidth + colGap) + 20;
       nodes.forEach((node, nodeIdx) => {
         // Space nodes vertically
-        const nodeY = nodeIdx * 90 + 30;
+        const nodeY = nodeIdx * rowHeight + 24;
         nodeCoords[node.id] = { x: colX, y: nodeY };
       });
     });
 
     // Find connections
-    const connections: { id: string; from: { x: number; y: number }; to: { x: number; y: number }; color: string }[] = [];
-    tree.forEach((node) => {
+    const connections: {
+      id: string;
+      targetId: string;
+      from: { x: number; y: number };
+      to: { x: number; y: number };
+      color: string;
+      isSuggestion: boolean;
+    }[] = [];
+    visualTree.forEach((node) => {
       if (node.parent && nodeCoords[node.parent] && nodeCoords[node.id]) {
         connections.push({
           id: `${node.parent}-${node.id}`,
+          targetId: node.id,
           from: nodeCoords[node.parent],
           to: nodeCoords[node.id],
-          color: node.color
+          color: node.color,
+          isSuggestion: Boolean(node.isSuggestion),
         });
       }
     });
@@ -294,7 +711,7 @@ export default function SimulationsPage() {
     // Find total height and width
     let totalHeight = 350;
     columns.forEach(nodes => {
-      const h = nodes.length * 90 + 60;
+      const h = nodes.length * rowHeight + 48;
       if (h > totalHeight) totalHeight = h;
     });
 
@@ -307,7 +724,67 @@ export default function SimulationsPage() {
       width: totalWidth,
       height: totalHeight
     };
-  }, [tree, selectedNode]);
+  }, [visualTree]);
+
+  const activePath = useMemo(() => {
+    const path: NodeData[] = [];
+    let current: NodeData | undefined = selectedNode;
+    const visited = new Set<string>();
+    while (current && !visited.has(current.id)) {
+      path.unshift(current);
+      visited.add(current.id);
+      current = current.parent ? tree.find((node) => node.id === current?.parent) : undefined;
+    }
+    return path;
+  }, [selectedNode, tree]);
+
+  const savedRoutes = useMemo(() => {
+    const rootIds = new Set(tree.filter((node) => node.parent === null).map((node) => node.id));
+
+    return tree
+      .filter((node) => node.parent && rootIds.has(node.parent))
+      .map((branch) => {
+        const checkpointId = branchCheckpoints[branch.id];
+        const checkpoint = tree.find(
+          (node) => node.id === checkpointId && isDescendantOf(node, branch.id, tree)
+        ) || branch;
+
+        return {
+          branch,
+          checkpoint,
+          depth: Math.max(1, getNodeDepth(checkpoint, tree)),
+          isActive: getTopLevelBranchId(selectedNode, tree) === branch.id,
+        };
+      });
+  }, [branchCheckpoints, selectedNode, tree]);
+
+  const resumeRoute = (branchId: string) => {
+    const checkpointId = branchCheckpoints[branchId];
+    const checkpoint = tree.find(
+      (node) => node.id === checkpointId && isDescendantOf(node, branchId, tree)
+    );
+    const branch = tree.find((node) => node.id === branchId);
+    if (checkpoint || branch) {
+      setMapMode("focus");
+      setSelectedNode(checkpoint || branch!);
+    }
+  };
+
+  const focusSelectedNode = () => {
+    const viewport = mapViewportRef.current;
+    const coords = layoutData.nodeCoords[selectedNode.id];
+    if (!viewport || !coords) return;
+    viewport.scrollTo({
+      left: Math.max(0, coords.x - viewport.clientWidth / 2 + 120),
+      top: Math.max(0, coords.y - viewport.clientHeight / 2 + 22),
+      behavior: "smooth",
+    });
+  };
+
+  useEffect(() => {
+    const frame = window.setTimeout(focusSelectedNode, 80);
+    return () => window.clearTimeout(frame);
+  }, [selectedNode.id, mapMode, layoutData.width, layoutData.height]);
 
   return (
     <div className="page-container" style={{ maxWidth: "1400px", padding: "40px 24px" }}>
@@ -337,44 +814,82 @@ export default function SimulationsPage() {
       )}
 
       {/* ── ZİHİN HARİTASI PANELİ (SVG-Connected Mind Map) ────────────────── */}
-      <div
-        className="glass-card"
-        style={{
-          padding: "32px",
-          marginBottom: "28px",
-          overflowX: "auto",
-          position: "relative"
-        }}
-      >
-        <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "6px", color: "var(--text-primary)" }}>
-          Zihin Haritası Görünümü (Mind Map)
-        </h2>
-        <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "24px" }}>
-          Seçenekler soldan sağa doğru dallanarak ilerler. Bir adıma tıklayarak o yolu seçebilir ve sağa doğru yeni dallar üretebilirsiniz.
-        </p>
+      <section className={`glass-card ${styles.mapPanel}`}>
+        <div className={styles.mapHeader}>
+          <div>
+            <div className={styles.mapKicker}><span /> KARAR YOLCULUĞU</div>
+            <h2>Gelecek Zihin Haritası</h2>
+            <p>Bir seçeneğe tıklayın; o yolun bir sonraki hedefleri sağ tarafta açılsın.</p>
+          </div>
+          <div className={styles.mapControls}>
+            <div className={styles.modeSwitch} aria-label="Harita görünümü">
+              <button type="button" data-active={mapMode === "focus"} onClick={() => setMapMode("focus")}>Aktif yol</button>
+              <button type="button" data-active={mapMode === "all"} onClick={() => setMapMode("all")}>Tüm ağaç</button>
+            </div>
+            <button type="button" className={styles.focusButton} onClick={focusSelectedNode}>◎ Seçili adıma git</button>
+          </div>
+        </div>
 
-        <div 
-          ref={containerRef}
-          style={{ 
-            position: "relative", 
-            width: `${layoutData.width}px`, 
-            height: `${layoutData.height}px`,
-            minHeight: "350px",
-            transition: "all 0.3s ease"
-          }}
-        >
-          {/* SVG Connector Lines Layer */}
-          <svg 
-            style={{ 
-              position: "absolute", 
-              top: 0, 
-              left: 0, 
-              width: "100%", 
-              height: "100%",
-              pointerEvents: "none",
-              zIndex: 1
-            }}
+        <div className={styles.pathBar}>
+          <span className={styles.pathLabel}>AKTİF YOL</span>
+          <div className={styles.breadcrumbs}>
+            {activePath.map((node, index) => (
+              <div key={node.id} className={styles.breadcrumbItem}>
+                {index > 0 && <span className={styles.breadcrumbArrow}>→</span>}
+                <button type="button" data-current={node.id === selectedNode.id} onClick={() => setSelectedNode(node)}>
+                  {index === 0 ? "Başlangıç" : node.label.replace(/^Karar:\s*/i, "")}
+                </button>
+              </div>
+            ))}
+          </div>
+          <span className={styles.stepCount}>{Math.max(0, activePath.length - 1)} karar</span>
+        </div>
+
+        {savedRoutes.length > 0 && (
+          <div className={styles.savedRoutes}>
+            <div className={styles.savedRoutesTitle}>
+              <span>KAYITLI ROTALARIM</span>
+              <p>Bir yolu dene, diğerine geç; ilerlemen kaybolmaz.</p>
+            </div>
+            <div className={styles.routeList}>
+              {savedRoutes.map(({ branch, checkpoint, depth, isActive }) => (
+                <button
+                  type="button"
+                  key={branch.id}
+                  data-active={isActive}
+                  onClick={() => resumeRoute(branch.id)}
+                  title={`${checkpoint.label} adımından devam et`}
+                >
+                  <span className={styles.routeDot} />
+                  <span className={styles.routeCopy}>
+                    <strong>{branch.label.replace(/^Karar:\s*/i, "")}</strong>
+                    <small>{depth} karar · {checkpoint.id === branch.id ? "Başlangıçta" : "Kaldığın adımdan devam"}</small>
+                  </span>
+                  <span className={styles.resumeLabel}>{isActive ? "Aktif" : "Devam et →"}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className={styles.mapMetaRow}>
+          <div className={styles.legend}>
+            <span><i className={styles.legendSelected} /> Seçili adım</span>
+            <span><i className={styles.legendPath} /> Alınmış karar</span>
+            <span><i className={styles.legendSuggestion} /> Yeni seçenek</span>
+            <span><i className={styles.legendCrisis} /> Stres testi</span>
+          </div>
+          <p>{mapMode === "focus" ? "Yalnızca aktif yol ve doğrudan alternatifler gösteriliyor." : "Kaydedilmiş bütün dallar gösteriliyor."}</p>
+        </div>
+
+        <div ref={mapViewportRef} className={styles.mapViewport}>
+          <div
+            ref={containerRef}
+            className={styles.mapCanvas}
+            style={{ width: `${layoutData.width}px`, height: `${layoutData.height}px` }}
           >
+          {/* SVG Connector Lines Layer */}
+          <svg className={styles.connectorLayer}>
             <defs>
               <linearGradient id="cyan-violet" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="var(--accent-cyan)" />
@@ -389,16 +904,16 @@ export default function SimulationsPage() {
               const midX = (x1 + x2) / 2;
               const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
               
-              const isSelectedPath = getPathBreadcrumbs().some(n => n.id === conn.id.split("-")[1]);
+              const isSelectedPath = activePath.some(n => n.id === conn.targetId);
 
               return (
                 <path
                   key={conn.id}
                   d={d}
                   fill="none"
-                  stroke={isSelectedPath ? conn.color : "rgba(255, 255, 255, 0.08)"}
+                  stroke={isSelectedPath ? conn.color : conn.isSuggestion ? "rgba(245, 158, 11, 0.32)" : "rgba(255, 255, 255, 0.1)"}
                   strokeWidth={isSelectedPath ? 3.5 : 1.5}
-                  strokeDasharray={conn.color.includes("pink") ? "4 4" : "none"}
+                  strokeDasharray={conn.isSuggestion || conn.color.includes("pink") ? "5 6" : "none"}
                   style={{
                     filter: isSelectedPath ? `drop-shadow(0 0 4px ${conn.color})` : "none",
                     transition: "all 0.3s ease"
@@ -409,7 +924,7 @@ export default function SimulationsPage() {
           </svg>
 
           {/* HTML Nodes Layer */}
-          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 2 }}>
+          <div className={styles.nodesLayer}>
             {layoutData.columns.map((column, colIdx) => (
               <div key={colIdx}>
                 {column.map((node) => {
@@ -423,25 +938,42 @@ export default function SimulationsPage() {
                     <button
                       key={node.id}
                       type="button"
-                      onClick={() => setSelectedNode(node)}
+                      onClick={() => {
+                        if (node.isSuggestion && node.suggestionText && node.parent) {
+                          void handleAddNewBranch(node.suggestionText, node.parent);
+                          return;
+                        }
+                        setSelectedNode(node);
+                      }}
+                      title={node.isSuggestion ? "Bu öneriyi gerçek bir dala dönüştür" : node.label}
+                      className={`${styles.mapNode} ${
+                        node.isSuggestion ? styles.suggestionNode :
+                        node.id.includes("crisis") ? styles.crisisNode :
+                        isSelected ? styles.selectedNode :
+                        isActivePath ? styles.pathNode : styles.alternativeNode
+                      }`}
                       style={{
                         position: "absolute",
                         left: `${coords.x}px`,
                         top: `${coords.y}px`,
                         width: "240px",
-                        height: "44px",
-                        ...mindmapNodeStyle(isActivePath, isSelected, node.color)
-                      }}
+                        "--node-color": node.color,
+                      } as React.CSSProperties}
                     >
-                      <strong>{node.label}</strong>
+                      <span className={styles.nodeStatus}>
+                        {node.isSuggestion ? "YENİ SEÇENEK" : node.id.includes("crisis") ? "STRES TESTİ" : isSelected ? "ŞU AN BURADASIN" : isActivePath ? "KARAR VERİLDİ" : "ALTERNATİF"}
+                      </span>
+                      <strong>{node.label.replace(/^Karar:\s*/i, "")}</strong>
+                      {node.isSuggestion && <span className={styles.nodeAction}>Seç ve bu yolu aç →</span>}
                     </button>
                   );
                 })}
               </div>
             ))}
           </div>
+          </div>
         </div>
-      </div>
+      </section>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "24px" }}>
 
@@ -766,27 +1298,6 @@ export default function SimulationsPage() {
 }
 
 // ── Yardımcı Stiller ──────────────────────────────────────────────────────────
-
-function mindmapNodeStyle(isActivePath: boolean, isSelected: boolean, color: string): React.CSSProperties {
-  return {
-    padding: "10px 14px",
-    background: isSelected ? "rgba(0, 229, 255, 0.08)" : "var(--glass-bg)",
-    border: `1px solid ${isSelected ? "var(--accent-cyan)" : isActivePath ? color : "var(--glass-border)"}`,
-    borderRadius: "var(--radius-md)",
-    color: isSelected ? "var(--accent-cyan)" : isActivePath ? "var(--text-primary)" : "var(--text-secondary)",
-    cursor: "pointer",
-    fontSize: "0.82rem",
-    textAlign: "left",
-    fontFamily: "'Inter', sans-serif",
-    transition: "all 0.2s ease",
-    boxShadow: isSelected ? "var(--shadow-glow-cyan)" : "none",
-    opacity: isActivePath ? 1 : 0.4,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    zIndex: 10
-  };
-}
 
 function nodeButtonStyle(selected: boolean, color: string): React.CSSProperties {
   return {

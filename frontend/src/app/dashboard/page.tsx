@@ -11,10 +11,8 @@ import {
   Activity,
   ArrowUpRight,
   BadgeCheck,
-  BarChart3,
   Bell,
   Bot,
-  BrainCircuit,
   BriefcaseBusiness,
   CalendarDays,
   CheckCircle2,
@@ -25,15 +23,11 @@ import {
   Globe,
   GraduationCap,
   Gauge,
-  Home,
   Landmark,
-  Layers3,
   ListTodo,
-  MapPinned,
   PlaneTakeoff,
   Rocket,
   School2,
-  Settings2,
   ShieldAlert,
   Sparkles,
   Star,
@@ -41,7 +35,6 @@ import {
   TrendingUp,
   Trophy,
   UserRound,
-  Users,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -76,13 +69,6 @@ type Metric = {
   label: string;
   value: string;
   tone: string;
-};
-
-type SidebarItem = {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  href: string;
-  active: boolean;
 };
 
 const goalOptions = [
@@ -275,19 +261,6 @@ function Sparkline() {
 export default function DashboardPage() {
   const [profile, setProfile] = useState<OnboardingData | null>(null);
   const [selectedGoal, setSelectedGoal] = useState(goalOptions[0]);
-  const sidebarItems: SidebarItem[] = [
-    { icon: Home, label: "Dashboard", href: "/dashboard", active: true },
-    { icon: BrainCircuit, label: "AI Merkez", href: "/agents", active: false },
-    { icon: Bot, label: "Coach Center", href: "/coach", active: false },
-    { icon: Rocket, label: "Simulations", href: "/simulations", active: false },
-    { icon: Layers3, label: "Parallel Futures", href: "/dashboard#futures", active: false },
-    { icon: MapPinned, label: "Roadmap", href: "/dashboard#roadmap", active: false },
-    { icon: ListTodo, label: "Daily Quests", href: "/dashboard#quests", active: false },
-    { icon: Sparkles, label: "Skills", href: "/skills", active: false },
-    { icon: Users, label: "Community", href: "/community", active: false },
-    { icon: BarChart3, label: "Analytics", href: "/analytics", active: false },
-    { icon: Settings2, label: "Settings", href: "/settings", active: false },
-  ];
 
   const [backendProfile, setBackendProfile] = useState<any>(null);
   const [quests, setQuests] = useState<any[]>([]);
@@ -415,55 +388,10 @@ export default function DashboardPage() {
     ];
   }, [backendProfile]);
 
-  const username = backendProfile?.display_name || (profile?.city ? `Sedef • ${profile.city}` : "Sedef K.");
-  const avatarInitials = backendProfile?.display_name ? backendProfile.display_name.substring(0,2).toUpperCase() : (profile?.age ? "SK" : "AL");
-
   return (
     <div className={styles.shell}>
       <div className={styles.orbViolet} aria-hidden="true" />
       <div className={styles.orbCyan} aria-hidden="true" />
-
-      <aside className={styles.sidebar}>
-        <div className={styles.brandBlock}>
-          <div className={styles.brandMark}>
-            <BrainCircuit className={styles.brandIcon} />
-          </div>
-          <div>
-            <p className={styles.brandLabel}>AlterLife</p>
-            <p className={styles.brandSubLabel}>Future Simulation OS</p>
-          </div>
-        </div>
-
-        <nav className={styles.sidebarNav}>
-          {sidebarItems.map(({ icon: Icon, label, href, active }) => (
-            <Link key={label} href={href} className={active ? styles.sidebarLinkActive : styles.sidebarLink}>
-              <Icon className={styles.sidebarLinkIcon} />
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          <div className={styles.sidebarProfile}>
-            <div className={styles.avatarMini}>
-              {avatarInitials}
-            </div>
-            <div>
-              <p className={styles.sidebarName}>{username}</p>
-              <p className={styles.sidebarMeta}>Level 12 • 7,820 XP</p>
-            </div>
-          </div>
-          <div className={styles.progressBlock}>
-            <div className={styles.progressMetaRow}>
-              <span>XP Progress</span>
-              <span>7,820 / 10,000</span>
-            </div>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "78%" }} />
-            </div>
-          </div>
-        </div>
-      </aside>
 
       <div className={styles.content}>
         <header className={styles.topbar}>
@@ -660,19 +588,15 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {futureScenarios.map((scenario, index) => {
-                const Icon = scenario.icon;
-                return (
-                  <article
-                    key={scenario.id}
-                    className={`${styles.futureCard} ${scenario.cardClass}`}
-                    style={{
-                      left: scenario.position.left,
-                      top: scenario.position.top,
-                      width: scenario.position.width,
-                      boxShadow: `0 24px 80px ${scenario.glow}`,
-                    }}
-                  >
+              <div className={styles.roadmapCards}>
+                {futureScenarios.map((scenario, index) => {
+                  const Icon = scenario.icon;
+                  return (
+                    <article
+                      key={scenario.id}
+                      className={`${styles.futureCard} ${scenario.cardClass}`}
+                      style={{ boxShadow: `0 18px 50px ${scenario.glow}` }}
+                    >
                     <div className={styles.futureCardTop}>
                       <div className={styles.futureCardIconWrap} style={{ borderColor: scenario.accent }}>
                         <Icon className={styles.futureCardIcon} style={{ color: scenario.accent }} />
@@ -714,9 +638,10 @@ export default function DashboardPage() {
                         Inspect branch <ArrowUpRight className={styles.futureLinkIcon} />
                       </span>
                     </div>
-                  </article>
-                );
-              })}
+                    </article>
+                  );
+                })}
+              </div>
             </div>
           </section>
 
@@ -1029,12 +954,13 @@ export default function DashboardPage() {
 const flowSelectStyle: CSSProperties = {
   width: "100%",
   padding: "8px 9px",
-  background: "rgba(255,255,255,0.045)",
+  background: "rgba(8,13,24,0.92)",
   border: "1px solid var(--glass-border)",
   borderRadius: "var(--radius-md)",
   color: "var(--text-primary)",
   fontFamily: "'Inter', sans-serif",
   fontSize: "0.74rem",
+  colorScheme: "dark",
   outline: "none",
 };
 

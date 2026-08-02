@@ -164,3 +164,63 @@ Sprint board screenshot:
   - Bir sonraki sprintte AI simülasyon sistemi ve kullanıcı verilerinin işlenmesine öncelik verilmesi kararlaştırılmıştır.
 
 ---
+
+## Sprint 3
+
+- **Sprint Notları**: Bu sprintte projenin eksik kalan özellikleri tamamlanmış, kullanıcı deneyimi iyileştirilmiş ve ürün final sürümüne ulaştırılmıştır. Yapay zekâ ajanları, simülasyon sistemi ve entegrasyonlar son kez gözden geçirilmiş, uygulama test edilerek teslim sürecine hazır hale getirilmiştir.
+
+- **Sprint içinde tamamlanması tahmin edilen puan**: 100 Puan
+
+- **Puan tamamlama mantığı**: Proje boyunca tamamlanması gereken toplam 300 puanlık backlog bulunmaktadır. Üçüncü sprintte kalan 100 puanlık görevlerin tamamlanması hedeflenmiş ve proje planlanan kapsam doğrultusunda tamamlanmıştır.
+
+- **Backlog düzeni ve Story seçimleri**: Son sprintte öncelik, eksik kalan kullanıcı hikâyelerinin tamamlanmasına ve ürünün son hâline getirilmesine verilmiştir. Dashboard geliştirmeleri, simülasyon ekranları, yapay zekâ ajanlarının iyileştirilmesi, analitik ekranı, topluluk sistemi, entegrasyonlar, performans optimizasyonları ve test süreçleri tamamlanmıştır. Miro Board üzerinde mavi item'lar UI/UX tasarım görevlerini, pembe item'lar frontend geliştirme görevlerini, mor item'lar backend geliştirme görevlerini, açık yeşil item'lar yapay zekâ ve simülasyon sistemlerini, turuncu item'lar üçüncü parti servis entegrasyonlarını, sarı item'lar veritabanı ve kimlik doğrulama işlemlerini, gri item'lar test ve deployment süreçlerini, koyu yeşil item'lar ise proje yönetimi ve dokümantasyon görevlerini temsil etmektedir.
+
+- **Daily Scrum:** Daily Scrum toplantıları Google Meet üzerinden gerçekleştirilmeye devam edilmiştir. Sprint boyunca günlük ilerlemeler ekip içerisinde değerlendirilmiş, görev takibi düzenli olarak yapılmış ve son teslim öncesinde ürünün eksikleri birlikte gözden geçirilmiştir. Daily Scrum toplantılarımız ve günlük WhatsApp konuşmalarımız Imgur'da toplanmıştır: [Sprint 3 - Daily Scrum Chats](https://imgur.com/a/OPl35fU)
+
+- Sprint Board Update:
+Sprint board screenshot:
+![Backlog](photos/Sprint3.jpg) 
+
+<details>
+<summary><h3>Ürün Durumu: Ekran Görüntüleri</h3></summary>
+
+  ![Giriş 1](photos/Sprint3_giris.png)
+  ![Giriş 2](photos/Sprint3_giris2.png)
+  ![Giriş 3](photos/Sprint3_giris3.png)
+  ![Giriş 4](photos/Sprint3_giris4.png)
+  ![Giriş 5](photos/Sprint3_giris5.png)
+  ![Giriş 6](photos/Sprint3_giris6.png)
+  ![Dashboard](photos/Sprint3_dashboard.png)
+  ![Dashboard 2](photos/Sprint3_dashboard2.png)
+  ![Dashboard 3](photos/Sprint3_dashboard3.png)
+  ![Simülasyon](photos/Sprint3_similasyon.png)
+  ![Simülasyon 2](photos/Sprint3_similasyon2.png)
+  ![Simülasyon 3](photos/Sprint3_similasyon3.png)
+  ![AI Merkezi](photos/Sprint3_aimerkez.png)
+  ![AI Merkezi 2](photos/Sprint3_aimerkez2.png)
+  ![Coach](photos/Sprint3_coach.png)
+  ![Coach 2](photos/Sprint3_coach2.png)
+  ![Yetenekler](photos/Sprint3_yetenekler.png)
+  ![Kütüphane](photos/Sprint3_kütüphane.png)
+  ![Analitik](photos/Sprint3_analitik.png)
+  ![Topluluk](photos/Sprint3_topluluk.png)
+  ![Topluluk 2](photos/Sprint3_topluluk2.png)
+  ![Topluluk 3](photos/Sprint3_topluluk3.png)
+  ![Bildirimler](photos/Sprint3_bildirimler.png)
+  ![Ayarlar](photos/Sprint3_ayarlar.png)
+  ![Ayarlar 2](photos/Sprint3_ayarlar2.png)
+  ![Ayarlar 3](photos/Sprint3_ayarlar3.png)
+
+</details>
+
+- **Sprint Review**:
+  - Sprint sonunda planlanan tüm temel kullanıcı hikâyeleri tamamlanmıştır. Çoklu ajan mimarisi, paralel senaryo simülasyonları, Black Swan stres testi, oyunlaştırma sistemi, Google Calendar ve GitHub entegrasyonları ile analitik ekranı çalışır duruma getirilmiştir. Ürün demo senaryosu hazırlanmış, kullanıcı deneyimi son kez gözden geçirilmiş ve final tanıtım videosu oluşturularak teslim süreci tamamlanmıştır.
+  - Sprint Review katılımcıları: Sedef Kazan (PO), Muhammed Güler (SM), Beyza Gümüş (Developer).
+
+- **Sprint Retrospective:**
+  - Takım üyeleri planlanan hedeflerin başarıyla tamamlandığını değerlendirmiştir.
+  - Görev dağılımı ve sprint planlamasının proje ilerledikçe daha verimli hâle geldiği gözlemlenmiştir.
+  - Gelecekte ürün geliştirilmeye devam edilirse kullanıcı geri bildirimlerine göre yeni senaryoların, farklı entegrasyonların ve daha gelişmiş yapay zekâ ajanlarının eklenmesine karar verilmiştir.
+  - Proje dokümantasyonu, GitHub deposu ve ürün tanıtım videosu tamamlanarak proje final teslimine hazır hâle getirilmiştir.
+
+---

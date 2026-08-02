@@ -6,10 +6,10 @@ Dallanan Karar Ağacı ve "What If" Engine
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 import hashlib
-from typing import Optional, List, Any, Literal
+from typing import Optional, List, Any, Literal, Dict
 
 from api.v1.auth_utils import get_current_user_id
-from api.v1.database import get_simulation_tree, get_user
+from api.v1.database import get_simulation_tree, get_user, save_simulation_tree
 from api.v1.services.simulation_service import (
     generate_initial_tree_data,
     add_branch_node,
@@ -53,6 +53,17 @@ class SimulationTreeResponse(BaseModel):
     user_id: str
     initial_target: str
     nodes: List[SimulationNode]
+    last_selected_node_id: Optional[str] = None
+    branch_checkpoints: Dict[str, str] = Field(default_factory=dict)
+    suggestion_history: Dict[str, List[str]] = Field(default_factory=dict)
+    map_mode: Literal["focus", "all"] = "focus"
+
+
+class SimulationViewStateRequest(BaseModel):
+    last_selected_node_id: Optional[str] = None
+    branch_checkpoints: Dict[str, str] = Field(default_factory=dict)
+    suggestion_history: Dict[str, List[str]] = Field(default_factory=dict)
+    map_mode: Literal["focus", "all"] = "focus"
 
 
 class ActionPlanRequest(BaseModel):
@@ -428,6 +439,10 @@ async def get_tree(simulation_id: str, user_id: str = Depends(get_current_user_i
         simulation_id=tree["simulation_id"],
         user_id=tree["user_id"],
         initial_target=tree["initial_target"],
+        last_selected_node_id=tree.get("last_selected_node_id"),
+        branch_checkpoints=tree.get("branch_checkpoints", {}),
+        suggestion_history=tree.get("suggestion_history", {}),
+        map_mode=tree.get("map_mode", "focus"),
         nodes=[
             SimulationNode(
                 node_id=n["node_id"],
@@ -445,6 +460,38 @@ async def get_tree(simulation_id: str, user_id: str = Depends(get_current_user_i
             for n in tree["nodes"]
         ]
     )
+
+
+@router.patch("/{simulation_id}/view-state", response_model=SimulationViewStateRequest, summary="Harita konumunu kaydet")
+async def save_view_state(
+    simulation_id: str,
+    payload: SimulationViewStateRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Seçili dalı ve harita görünümünü cihazdan bağımsız olarak saklar."""
+    _require_simulation_owner(simulation_id, user_id)
+    tree = get_simulation_tree(simulation_id)
+    if not tree:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simülasyon bulunamadı.")
+
+    valid_node_ids = {node["node_id"] for node in tree.get("nodes", [])}
+    if payload.last_selected_node_id and payload.last_selected_node_id not in valid_node_ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Seçili adım bu simülasyonda bulunamadı.")
+
+    tree["last_selected_node_id"] = payload.last_selected_node_id
+    tree["branch_checkpoints"] = {
+        branch_id: node_id
+        for branch_id, node_id in payload.branch_checkpoints.items()
+        if branch_id in valid_node_ids and node_id in valid_node_ids
+    }
+    tree["suggestion_history"] = {
+        parent_id: suggestions[:6]
+        for parent_id, suggestions in payload.suggestion_history.items()
+        if parent_id in valid_node_ids
+    }
+    tree["map_mode"] = payload.map_mode
+    save_simulation_tree(simulation_id, tree)
+    return payload
 
 
 @router.post("/{simulation_id}/nodes/{node_id}/action-plan", response_model=ActionPlanResponse, summary="Seçili dalı hedefe çevir")

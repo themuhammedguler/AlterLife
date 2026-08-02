@@ -171,6 +171,10 @@ def orchestrate(user_id: str) -> Dict[str, Any]:
         if "profile" not in user_data:
             user_data["profile"] = {}
         user_data["profile"]["archetype"] = profile_analysis.get("archetype", "Pratik")
+        # store a UI-friendly display label (emoji + archetype)
+        user_data["profile"]["archetype_display"] = profile_analysis.get(
+            "archetype_display", f"🛠️ {profile_analysis.get('archetype', 'Pratik')}"
+        )
         user_data["profile"]["archetype_description"] = profile_analysis.get("archetype_description", "")
         save_user(user_id, user_data)
 
@@ -221,7 +225,8 @@ def orchestrate(user_id: str) -> Dict[str, Any]:
     return {
         "user_id": user_id,
         "generated_at": str(date.today()),
-        "user_archetype": profile_analysis.get("archetype", "Pratik"),
+        # use the emoji-enhanced archetype when available for UI
+        "user_archetype": profile_analysis.get("archetype_display", profile_analysis.get("archetype", "Pratik")),
         "archetype_description": profile_analysis.get("archetype_description", ""),
         "risk_tolerance": profile_analysis.get("risk_tolerance", "medium"),
         "primary_goal": goal,

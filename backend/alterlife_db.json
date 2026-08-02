@@ -145,6 +145,33 @@
       "level": 1,
       "xp": 0,
       "next_level_xp": 1000
+    },
+    "usr_demo_google": {
+      "userId": "usr_demo_google",
+      "email": "demo_google@alterlife.io",
+      "displayName": "Demo_google",
+      "createdAt": "2026-08-02T15:20:29.995383Z",
+      "updatedAt": "2026-08-02T15:25:41.168572Z",
+      "profile": {
+        "role": "Belirlenmedi",
+        "experienceYears": 0,
+        "skills": {},
+        "languages": {},
+        "avatarUrl": null
+      },
+      "rpgState": {
+        "level": 1,
+        "xp": 0,
+        "next_level_xp": 1000,
+        "title": "Novice Seeker",
+        "energy": 100,
+        "focus": 100,
+        "max_energy": 100,
+        "max_focus": 100
+      },
+      "level": 1,
+      "xp": 0,
+      "next_level_xp": 1000
     }
   },
   "simulations": {
@@ -589,6 +616,62 @@
         "is_completed": true,
         "xp_reward": 50
       }
+    ],
+    "usr_demo_google": [
+      {
+        "resource_id": "res_seed_001",
+        "title": "AWS VPC Tutorial for Beginners",
+        "platform": "YouTube",
+        "url": "https://www.youtube.com/watch?v=2doSoMN2xvI",
+        "thumbnail_url": null,
+        "skill_tags": [
+          "AWS",
+          "Cloud",
+          "VPC"
+        ],
+        "status": "in_progress",
+        "created_at": "2026-08-02T15:21:40.488029Z",
+        "completed_at": null,
+        "saved_at": "2026-06-28",
+        "is_completed": false,
+        "xp_reward": 50
+      },
+      {
+        "resource_id": "res_seed_002",
+        "title": "Docker & Kubernetes: The Complete Guide",
+        "platform": "Udemy",
+        "url": "https://www.udemy.com/course/docker-and-kubernetes-the-complete-guide/",
+        "thumbnail_url": null,
+        "skill_tags": [
+          "Docker",
+          "Kubernetes",
+          "DevOps"
+        ],
+        "status": "in_progress",
+        "created_at": "2026-08-02T15:21:40.489453Z",
+        "completed_at": "2026-07-01",
+        "saved_at": "2026-06-27",
+        "is_completed": true,
+        "xp_reward": 50
+      },
+      {
+        "resource_id": "res_seed_003",
+        "title": "FastAPI – Official Documentation",
+        "platform": "Docs",
+        "url": "https://fastapi.tiangolo.com/tutorial/",
+        "thumbnail_url": null,
+        "skill_tags": [
+          "Python",
+          "FastAPI",
+          "Backend"
+        ],
+        "status": "in_progress",
+        "created_at": "2026-08-02T15:21:40.489487Z",
+        "completed_at": null,
+        "saved_at": "2026-06-26",
+        "is_completed": false,
+        "xp_reward": 50
+      }
     ]
   },
   "skills": {
@@ -859,6 +942,176 @@
         "canvas_x": 150.0,
         "canvas_y": 200.0
       }
+    ],
+    "usr_demo_google": [
+      {
+        "skill_id": "python",
+        "name": "Python",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Backend",
+        "max_level": 5,
+        "prerequisites": [],
+        "description": "Nesne yönelimli programlama ve Python ekosistemi.",
+        "is_unlocked": true,
+        "status": "locked"
+      },
+      {
+        "skill_id": "javascript",
+        "name": "JavaScript",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Frontend",
+        "max_level": 5,
+        "prerequisites": [],
+        "description": "ES6+, async/await ve modern JS patterns.",
+        "is_unlocked": true,
+        "status": "locked"
+      },
+      {
+        "skill_id": "react",
+        "name": "React / Next.js",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Frontend",
+        "max_level": 5,
+        "prerequisites": [
+          "javascript"
+        ],
+        "description": "Bileşen tabanlı UI, hooks ve App Router.",
+        "is_unlocked": false,
+        "status": "locked"
+      },
+      {
+        "skill_id": "fastapi",
+        "name": "FastAPI",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Backend",
+        "max_level": 5,
+        "prerequisites": [
+          "python"
+        ],
+        "description": "Yüksek performanslı REST API ve Pydantic.",
+        "is_unlocked": false,
+        "status": "locked"
+      },
+      {
+        "skill_id": "docker",
+        "name": "Docker",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "DevOps",
+        "max_level": 5,
+        "prerequisites": [],
+        "description": "Container oluşturma ve çok katmanlı build.",
+        "is_unlocked": true,
+        "status": "locked"
+      },
+      {
+        "skill_id": "kubernetes",
+        "name": "Kubernetes",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "DevOps",
+        "max_level": 5,
+        "prerequisites": [
+          "docker"
+        ],
+        "description": "Container orkestrasyonu ve pod yönetimi.",
+        "is_unlocked": false,
+        "status": "locked"
+      },
+      {
+        "skill_id": "aws_fundamentals",
+        "name": "AWS Fundamentals",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Cloud",
+        "max_level": 5,
+        "prerequisites": [],
+        "description": "IAM, EC2, S3, RDS ve temel AWS hizmetleri.",
+        "is_unlocked": true,
+        "status": "locked"
+      },
+      {
+        "skill_id": "aws_vpc",
+        "name": "AWS VPC & Networking",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Cloud",
+        "max_level": 5,
+        "prerequisites": [
+          "aws_fundamentals"
+        ],
+        "description": "VPC, subnet, security group ve NAT gateway.",
+        "is_unlocked": false,
+        "status": "locked"
+      },
+      {
+        "skill_id": "german_a1",
+        "name": "Almanca A1",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Dil",
+        "max_level": 5,
+        "prerequisites": [],
+        "description": "Temel Almanca: selamlama ve gündelik ifadeler.",
+        "is_unlocked": true,
+        "status": "locked"
+      },
+      {
+        "skill_id": "german_b1",
+        "name": "Almanca B1",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Dil",
+        "max_level": 5,
+        "prerequisites": [
+          "german_a1"
+        ],
+        "description": "İş hayatı ve Almanya vize süreçleri için B1.",
+        "is_unlocked": false,
+        "status": "locked"
+      },
+      {
+        "skill_id": "system_design",
+        "name": "System Design",
+        "level": 0,
+        "xp": 0,
+        "next_level_xp": 100,
+        "category": "Backend",
+        "max_level": 5,
+        "prerequisites": [
+          "docker"
+        ],
+        "description": "Ölçeklenebilir mimari ve cache stratejileri.",
+        "is_unlocked": false,
+        "status": "locked"
+      },
+      {
+        "skill_id": "english_professional",
+        "name": "Profesyonel İngilizce",
+        "level": 2,
+        "xp": 400,
+        "next_level_xp": 100,
+        "category": "Soft",
+        "max_level": 5,
+        "prerequisites": [],
+        "description": "İş yazışmaları ve mülakat becerileri.",
+        "is_unlocked": true,
+        "status": "locked"
+      }
     ]
   },
   "analytics": {
@@ -994,6 +1247,315 @@
           "xp_earned": 150,
           "verified_by": "github_commit"
         }
+      }
+    ]
+  },
+  "community": {
+    "paths": [
+      {
+        "id": "path_001",
+        "goal": "Almanya'da yazılım mühendisi olmak",
+        "role": "Software Developer",
+        "duration_months": 18,
+        "steps": [
+          "Python öğrendi",
+          "AWS Solutions Architect sertifikası aldı",
+          "B1 Almanca",
+          "Berlin'de iş buldu"
+        ],
+        "outcome": "Senior Backend Developer @ Berlin startupında €70k/yıl",
+        "tags": [
+          "almanya",
+          "backend",
+          "python",
+          "aws",
+          "göç"
+        ],
+        "success": true,
+        "country_from": "Turkey",
+        "country_to": "Germany",
+        "members_count": 42,
+        "avg_progress": 68,
+        "common_until_step": 2,
+        "branches": [
+          {
+            "name": "Almanya'da çalışmak",
+            "members_count": 24,
+            "avg_progress": 71
+          },
+          {
+            "name": "Almanya'da master",
+            "members_count": 18,
+            "avg_progress": 61
+          }
+        ]
+      },
+      {
+        "id": "path_002",
+        "goal": "Freelance kariyer ve finansal özgürlük",
+        "role": "UI/UX Designer",
+        "duration_months": 12,
+        "steps": [
+          "Figma ustalaştı",
+          "Upwork profili açtı",
+          "İlk 3 müşteri",
+          "Aylık 3000$ gelir"
+        ],
+        "outcome": "Full-time freelancer, 5000$/ay, tam lokasyon bağımsız",
+        "tags": [
+          "freelance",
+          "tasarım",
+          "figma",
+          "remote",
+          "finansal özgürlük"
+        ],
+        "success": true,
+        "country_from": "Turkey",
+        "country_to": null,
+        "members_count": 27,
+        "avg_progress": 54,
+        "common_until_step": 1,
+        "branches": [
+          {
+            "name": "Upwork ağırlıklı",
+            "members_count": 15,
+            "avg_progress": 58
+          },
+          {
+            "name": "Ajans müşterisi",
+            "members_count": 12,
+            "avg_progress": 49
+          }
+        ]
+      },
+      {
+        "id": "path_003",
+        "goal": "Startup kurmak ve seed funding almak",
+        "role": "Startup Founder",
+        "duration_months": 24,
+        "steps": [
+          "Fikir doğrulandı",
+          "MVP geliştirildi",
+          "Accelerator programına kabul",
+          "Seed round €200k"
+        ],
+        "outcome": "B2B SaaS startup, 3 çalışan, €200k seed",
+        "tags": [
+          "startup",
+          "girişim",
+          "mvp",
+          "funding",
+          "saas"
+        ],
+        "success": true,
+        "country_from": "Turkey",
+        "country_to": null,
+        "members_count": 19,
+        "avg_progress": 46,
+        "common_until_step": 1,
+        "branches": [
+          {
+            "name": "B2B SaaS",
+            "members_count": 11,
+            "avg_progress": 52
+          },
+          {
+            "name": "Consumer app",
+            "members_count": 8,
+            "avg_progress": 38
+          }
+        ]
+      },
+      {
+        "id": "path_004",
+        "goal": "Kanada'ya göç etmek",
+        "role": "Software Developer",
+        "duration_months": 30,
+        "steps": [
+          "IELTS 7.5 aldı",
+          "Express Entry başvurusu",
+          "İş teklifi Kanada'dan",
+          "PR aldı"
+        ],
+        "outcome": "Kanada'da permanent resident, $95k CAD/yıl",
+        "tags": [
+          "kanada",
+          "göç",
+          "express entry",
+          "pr",
+          "yazılım"
+        ],
+        "success": true,
+        "country_from": "Turkey",
+        "country_to": "Canada",
+        "members_count": 31,
+        "avg_progress": 57,
+        "common_until_step": 1,
+        "branches": [
+          {
+            "name": "Express Entry",
+            "members_count": 21,
+            "avg_progress": 62
+          },
+          {
+            "name": "Job offer",
+            "members_count": 10,
+            "avg_progress": 48
+          }
+        ]
+      },
+      {
+        "id": "path_005",
+        "goal": "Cloud ve DevOps kariyerine geçiş",
+        "role": "Software Developer",
+        "duration_months": 8,
+        "steps": [
+          "AWS CCP aldı",
+          "Docker ve Kubernetes öğrendi",
+          "Terraform sertifikası",
+          "Yeni pozisyon"
+        ],
+        "outcome": "DevOps Engineer, %40 maaş artışı",
+        "tags": [
+          "aws",
+          "devops",
+          "kubernetes",
+          "terraform",
+          "cloud",
+          "geçiş"
+        ],
+        "success": true,
+        "country_from": "Turkey",
+        "country_to": null,
+        "members_count": 36,
+        "avg_progress": 63,
+        "common_until_step": 1,
+        "branches": [
+          {
+            "name": "AWS/Cloud",
+            "members_count": 22,
+            "avg_progress": 67
+          },
+          {
+            "name": "Kubernetes/SRE",
+            "members_count": 14,
+            "avg_progress": 56
+          }
+        ]
+      },
+      {
+        "id": "path_006",
+        "goal": "Yüksek lisans yapıp akademik kariyer",
+        "role": "Student",
+        "duration_months": 36,
+        "steps": [
+          "GRE 320 aldı",
+          "ABD üniversitesine başvurdu",
+          "Burs kazandı",
+          "Araştırma yayını"
+        ],
+        "outcome": "PhD öğrencisi, tam burslu, üniversite yurt dışında",
+        "tags": [
+          "yüksek lisans",
+          "phd",
+          "abd",
+          "burs",
+          "akademi"
+        ],
+        "success": true,
+        "country_from": "Turkey",
+        "country_to": "USA",
+        "members_count": 23,
+        "avg_progress": 49,
+        "common_until_step": 1,
+        "branches": [
+          {
+            "name": "Tam burs",
+            "members_count": 14,
+            "avg_progress": 52
+          },
+          {
+            "name": "Araştırma asistanlığı",
+            "members_count": 9,
+            "avg_progress": 43
+          }
+        ]
+      },
+      {
+        "id": "path_007",
+        "goal": "Hollanda'da data scientist olmak",
+        "role": "Data Scientist",
+        "duration_months": 15,
+        "steps": [
+          "Python ML sertifikası",
+          "Kaggle competitions",
+          "Hollanda CVsine uyarladı",
+          "Amsterdam iş teklifi"
+        ],
+        "outcome": "Data Scientist @ Amsterdam, €65k/yıl",
+        "tags": [
+          "hollanda",
+          "data science",
+          "machine learning",
+          "amsterdam",
+          "göç"
+        ],
+        "success": true,
+        "country_from": "Turkey",
+        "country_to": "Netherlands",
+        "members_count": 16,
+        "avg_progress": 59,
+        "common_until_step": 2,
+        "branches": [
+          {
+            "name": "Data scientist",
+            "members_count": 10,
+            "avg_progress": 64
+          },
+          {
+            "name": "ML engineer",
+            "members_count": 6,
+            "avg_progress": 51
+          }
+        ]
+      },
+      {
+        "id": "path_008",
+        "goal": "İngilizce içerik üretimi ve YouTube geliri",
+        "role": "Content Creator",
+        "duration_months": 20,
+        "steps": [
+          "Niche seçildi",
+          "100 video çekildi",
+          "5k abone",
+          "Sponsorluk anlaşmaları"
+        ],
+        "outcome": "Aylık 2000$ pasif gelir, topluluk 15k",
+        "tags": [
+          "youtube",
+          "içerik",
+          "pasif gelir",
+          "ingilizce",
+          "yaratıcı"
+        ],
+        "success": true,
+        "country_from": "Turkey",
+        "country_to": null,
+        "members_count": 21,
+        "avg_progress": 44,
+        "common_until_step": 1,
+        "branches": [
+          {
+            "name": "YouTube",
+            "members_count": 13,
+            "avg_progress": 48
+          },
+          {
+            "name": "Newsletter",
+            "members_count": 8,
+            "avg_progress": 37
+          }
+        ]
       }
     ]
   }

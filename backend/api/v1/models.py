@@ -54,6 +54,10 @@ class SimulationDoc(BaseModel):
     user_id: str
     initial_target: str
     nodes: List[SimulationNode] = Field(default_factory=list)
+    last_selected_node_id: Optional[str] = None
+    branch_checkpoints: Dict[str, str] = Field(default_factory=dict)
+    suggestion_history: Dict[str, List[str]] = Field(default_factory=dict)
+    map_mode: str = "focus"
     created_at: str = Field(default_factory=utc_now_iso)
     updated_at: str = Field(default_factory=utc_now_iso)
 

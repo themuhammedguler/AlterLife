@@ -1,34 +1,105 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BrainCircuit,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Coins,
+  Compass,
+  Gauge,
+  HeartPulse,
+  Lightbulb,
+  MapPinned,
+  RefreshCw,
+  Route,
+  Sparkles,
+  Target,
+  TrendingUp,
+  UsersRound,
+} from "lucide-react";
 import { runOrchestrator } from "@/lib/api";
+import styles from "./page.module.css";
+
+type AgentDescription = { name: string; emoji: string; description: string };
+type AgentData = {
+  user_archetype?: string;
+  archetype_description?: string;
+  primary_goal?: string;
+  motivational_message?: string;
+  generated_at?: string;
+  urgency_score?: number;
+  risk_tolerance?: string;
+  agent_descriptions?: Record<string, AgentDescription>;
+  unified_report?: {
+    today_focus?: string[];
+    warnings?: string[];
+    opportunities?: string[];
+  };
+  agent_results?: Record<string, any>;
+  profile_stats?: {
+    level?: number;
+    xp?: number;
+    completed_quests?: number;
+    skills_unlocked?: number;
+    active_days?: number;
+  };
+};
+
+const agentIcons: Record<string, typeof BrainCircuit> = {
+  financial: Coins,
+  career_coach: Compass,
+  wellbeing: HeartPulse,
+  migration: MapPinned,
+  skill_gap: Route,
+  timeline: CalendarDays,
+  scenario: Sparkles,
+};
+
+const archetypeEmoji = (archetype?: string) =>
+  archetype === "Riskçi" ? "🎲" : archetype === "Planlayıcı" ? "📋" : archetype === "Hayalci" ? "☁️" : "🛠️";
+
+const cleanPrefix = (text: string) => text.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, "");
 
 export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
-  const [orchestratorData, setOrchestratorData] = useState<any>(null);
+  const [data, setData] = useState<AgentData | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function loadAgents() {
-      try {
-        const data = await runOrchestrator();
-        setOrchestratorData(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to load agents.");
-      } finally {
-        setLoading(false);
-      }
+  const loadAgents = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setData(await runOrchestrator());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI ajanları yüklenemedi.");
+    } finally {
+      setLoading(false);
     }
-    loadAgents();
   }, []);
+
+  useEffect(() => {
+    void loadAgents();
+  }, [loadAgents]);
+
+  const activeAgents = useMemo(() => Object.entries(data?.agent_descriptions || {}), [data]);
+  const results = data?.agent_results || {};
+  const report = data?.unified_report || {};
+  const stats = data?.profile_stats || {};
+  const wellbeingScore = Math.min(100, Math.max(0, results.wellbeing?.burnout_score || 0));
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-900 text-gray-100">
-        <div className="text-center">
-          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-accent-cyan border-t-transparent"></div>
-          <h2 className="text-xl font-semibold">Beyin Çalışıyor...</h2>
-          <p className="text-gray-400">Agent'lar verilerini analiz ediyor</p>
+      <div className={styles.statePage}>
+        <div className={styles.loaderCore}><BrainCircuit size={42} /></div>
+        <div className={styles.loaderRings} aria-hidden="true" />
+        <h1>AI konseyi toplanıyor</h1>
+        <p>Uzman ajanlar profilini, hedefini ve ilerlemeni birlikte değerlendiriyor.</p>
+        <div className={styles.loadingSteps}>
+          <span>Profil okunuyor</span><i /><span>Uzmanlar seçiliyor</span><i /><span>Rapor hazırlanıyor</span>
         </div>
       </div>
     );
@@ -36,222 +107,156 @@ export default function AgentsPage() {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-900 text-gray-100">
-        <div className="rounded-xl border border-red-500/50 bg-red-500/10 p-6 text-center">
-          <h2 className="text-xl font-bold text-red-400">Bağlantı Hatası</h2>
-          <p className="mt-2 text-red-300">{error}</p>
-        </div>
+      <div className={styles.statePage}>
+        <div className={styles.errorIcon}><AlertTriangle size={34} /></div>
+        <h1>AI Merkezi şu an yanıt vermiyor</h1>
+        <p>{error}</p>
+        <button className={styles.primaryButton} onClick={() => void loadAgents()}><RefreshCw size={17} /> Yeniden dene</button>
       </div>
     );
   }
 
-  const {
-    user_archetype,
-    archetype_description,
-    primary_goal,
-    motivational_message,
-    agent_descriptions,
-    unified_report,
-    agent_results,
-    profile_stats,
-  } = orchestratorData || {};
-
   return (
-    <div className="min-h-screen bg-gray-900 px-4 py-8 text-gray-100 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-8 border-b border-gray-800 pb-6">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-accent-cyan to-accent-violet bg-clip-text text-transparent">
-            AI Yönlendirme Merkezi
-          </h1>
-          <p className="mt-2 text-gray-400">Tüm uzman agent'larınızın ortak analizi ve kararları</p>
-        </header>
+    <div className={styles.page}>
+      <div className={styles.ambientOne} aria-hidden="true" />
+      <div className={styles.ambientTwo} aria-hidden="true" />
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Panel 1: Profile & Status */}
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-6 shadow-xl backdrop-blur-sm">
-              <h2 className="text-lg font-semibold text-gray-300">Profil Arketipi</h2>
-              <div className="mt-4 flex items-center space-x-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-cyan/20 text-3xl">
-                  {user_archetype === "Riskçi" ? "🎲" : user_archetype === "Planlayıcı" ? "📋" : user_archetype === "Hayalci" ? "☁️" : "🛠️"}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-accent-cyan">{user_archetype}</h3>
-                  <p className="text-sm text-gray-400">Seviye {profile_stats?.level}</p>
-                </div>
-              </div>
-              <p className="mt-4 text-sm leading-relaxed text-gray-300">
-                {archetype_description}
-              </p>
-              <div className="mt-4 rounded-lg bg-gray-800 p-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Motivasyon</h4>
-                <p className="mt-1 text-sm font-medium italic text-accent-violet">"{motivational_message}"</p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-6 shadow-xl backdrop-blur-sm">
-              <h2 className="text-lg font-semibold text-gray-300">Aktif Uzmanlar</h2>
-              <div className="mt-4 space-y-3">
-                {Object.keys(agent_descriptions || {}).map((key) => {
-                  const agent = agent_descriptions[key];
-                  return (
-                    <div key={key} className="flex items-center space-x-3 rounded-lg bg-gray-800/50 p-3">
-                      <span className="text-2xl">{agent.emoji}</span>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-200">{agent.name}</p>
-                        <p className="text-xs text-gray-500">{agent.description}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Panel 2: Unified Report (Actionable) */}
-          <div className="space-y-6 lg:col-span-1">
-            <div className="rounded-2xl border border-accent-cyan/30 bg-accent-cyan/5 p-6 shadow-[0_0_15px_rgba(34,211,238,0.05)] backdrop-blur-sm">
-              <h2 className="flex items-center text-xl font-bold text-gray-100">
-                <span className="mr-2 text-2xl">⚡</span> Bugünün Odak Noktası
-              </h2>
-              <div className="mt-6 space-y-4">
-                {unified_report?.today_focus?.map((focus: string, idx: number) => (
-                  <div key={idx} className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-                    <p className="text-sm text-gray-200">{focus}</p>
-                  </div>
-                ))}
-                {(!unified_report?.today_focus || unified_report.today_focus.length === 0) && (
-                  <p className="text-sm text-gray-500">Bugün için acil bir görev bulunmuyor.</p>
-                )}
-              </div>
-            </div>
-
-            {unified_report?.warnings?.length > 0 && (
-              <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-6 backdrop-blur-sm">
-                <h2 className="flex items-center text-lg font-bold text-red-400">
-                  <span className="mr-2">⚠️</span> Riskler ve Uyarılar
-                </h2>
-                <ul className="mt-4 space-y-3">
-                  {unified_report.warnings.map((warn: string, idx: number) => (
-                    <li key={idx} className="flex items-start text-sm text-gray-300">
-                      <span className="mr-2 mt-0.5 text-red-500">•</span> {warn}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {unified_report?.opportunities?.length > 0 && (
-              <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-6 backdrop-blur-sm">
-                <h2 className="flex items-center text-lg font-bold text-green-400">
-                  <span className="mr-2">🌱</span> Fırsatlar
-                </h2>
-                <ul className="mt-4 space-y-3">
-                  {unified_report.opportunities.map((opp: string, idx: number) => (
-                    <li key={idx} className="flex items-start text-sm text-gray-300">
-                      <span className="mr-2 mt-0.5 text-green-500">•</span> {opp}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {/* Panel 3: Detailed Agent Insights */}
-          <div className="space-y-6 lg:col-span-1">
-            <h2 className="text-2xl font-bold text-gray-100">Uzman Raporları</h2>
-
-            {agent_results?.timeline && (
-              <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
-                <h3 className="flex items-center font-semibold text-gray-200">
-                  <span className="mr-2 text-xl">📅</span> Zaman Çizelgesi
-                </h3>
-                <p className="mt-3 text-sm text-gray-300">
-                  {agent_results.timeline.reality_check}
-                </p>
-                <div className="mt-4 flex items-center justify-between rounded bg-gray-900 p-3">
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">Mevcut Hız</p>
-                    <p className="text-lg font-bold text-gray-200">{agent_results.timeline.current_pace_months} Ay</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">Optimize</p>
-                    <p className="text-lg font-bold text-accent-green">{agent_results.timeline.optimized_pace_months} Ay</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {agent_results?.financial && (
-              <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
-                <h3 className="flex items-center font-semibold text-gray-200">
-                  <span className="mr-2 text-xl">💰</span> Finansal Durum
-                </h3>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Gereken Birikim:</span>
-                  <span className="font-bold text-gray-200">${agent_results.financial.target_savings_usd}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Acil Fon:</span>
-                  <span className="font-bold text-gray-200">{agent_results.financial.emergency_fund_months} Ay</span>
-                </div>
-              </div>
-            )}
-
-            {agent_results?.skill_gap && (
-              <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
-                <h3 className="flex items-center font-semibold text-gray-200">
-                  <span className="mr-2 text-xl">📚</span> Yetenek Açığı
-                </h3>
-                <ul className="mt-3 space-y-2">
-                  {agent_results.skill_gap.critical_gaps?.slice(0, 3).map((gap: any, i: number) => (
-                    <li key={i} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-300">{gap.skill}</span>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        gap.urgency === 'critical' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
-                      }`}>
-                        {gap.urgency}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {agent_results?.wellbeing && (
-              <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
-                <h3 className="flex items-center font-semibold text-gray-200">
-                  <span className="mr-2 text-xl">🧘</span> Sağlık & Denge
-                </h3>
-                <div className="mt-3">
-                  <div className="mb-1 flex justify-between text-xs">
-                    <span className="text-gray-400">Tükenmişlik Riski</span>
-                    <span className={agent_results.wellbeing.risk_level === 'Kritik' ? 'text-red-400' : 'text-gray-200'}>
-                      {agent_results.wellbeing.risk_level}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
-                    <div 
-                      className={`h-full ${agent_results.wellbeing.burnout_score > 70 ? 'bg-red-500' : 'bg-green-500'}`}
-                      style={{ width: `${agent_results.wellbeing.burnout_score}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {agent_results?.migration && (
-              <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
-                <h3 className="flex items-center font-semibold text-gray-200">
-                  <span className="mr-2 text-xl">✈️</span> Göç Planı
-                </h3>
-                <p className="mt-3 text-sm font-medium text-accent-cyan">Hedef: {agent_results.migration.target_country}</p>
-                <p className="mt-1 text-sm text-gray-400">Vize: {agent_results.migration.visa_recommendation}</p>
-              </div>
-            )}
-          </div>
+      <header className={styles.hero}>
+        <div>
+          <div className={styles.eyebrow}><BrainCircuit size={15} /> ORCHESTRATOR ONLINE <span /></div>
+          <h1>AI Yönlendirme <span>Merkezi</span></h1>
+          <p>{activeAgents.length} uzman ajan, hedefin için tek bir uygulanabilir yol haritasında birleşti.</p>
         </div>
-      </div>
+        <button className={styles.refreshButton} onClick={() => void loadAgents()}>
+          <RefreshCw size={17} /> Analizi yenile
+        </button>
+      </header>
+
+      <section className={styles.commandGrid}>
+        <article className={`${styles.panel} ${styles.identityCard}`}>
+          <div className={styles.cardLabel}>DİJİTAL İKİZ PROFİLİ</div>
+          <div className={styles.identityTop}>
+            <div className={styles.avatar}>{archetypeEmoji(data?.user_archetype)}</div>
+            <div>
+              <span className={styles.muted}>Karar arketipi</span>
+              <h2>{data?.user_archetype || "Pratik"}</h2>
+              <div className={styles.levelPill}>SEVİYE {stats.level || 1}</div>
+            </div>
+          </div>
+          <p className={styles.description}>{data?.archetype_description || "Hedefe odaklı, veriye dayalı karar profili."}</p>
+          <div className={styles.quote}><Sparkles size={16} /><span>{data?.motivational_message || "Bir sonraki doğru adım, büyük hedefi ulaşılabilir kılar."}</span></div>
+        </article>
+
+        <article className={`${styles.panel} ${styles.goalCard}`}>
+          <div className={styles.cardLabel}>ANA GÖREV</div>
+          <div className={styles.goalIcon}><Target size={22} /></div>
+          <h2>{data?.primary_goal || "Kariyer gelişimi"}</h2>
+          <div className={styles.goalMeta}>
+            <span><Gauge size={15} /> Öncelik {data?.urgency_score || 5}/10</span>
+            <span><TrendingUp size={15} /> Risk: {data?.risk_tolerance || "orta"}</span>
+          </div>
+          <div className={styles.progressTrack}><span style={{ width: `${Math.min(100, (data?.urgency_score || 5) * 10)}%` }} /></div>
+          <p>Uzman konseyinin tüm değerlendirmeleri bu hedef etrafında senkronize edildi.</p>
+        </article>
+
+        <article className={`${styles.panel} ${styles.statsCard}`}>
+          <div className={styles.cardLabel}>CANLI PROFİL VERİSİ</div>
+          <div className={styles.statGrid}>
+            <div><strong>{stats.completed_quests || 0}</strong><span>Tamamlanan görev</span></div>
+            <div><strong>{stats.skills_unlocked || 0}</strong><span>Açık yetenek</span></div>
+            <div><strong>{stats.active_days || 0}</strong><span>Aktif gün</span></div>
+            <div><strong>{stats.xp || 0}</strong><span>Toplam XP</span></div>
+          </div>
+          <div className={styles.syncLine}><CheckCircle2 size={16} /> Profil verileri ajanlarla senkronize</div>
+        </article>
+      </section>
+
+      <section className={styles.workspace}>
+        <div className={styles.mainColumn}>
+          <article className={`${styles.panel} ${styles.focusPanel}`}>
+            <div className={styles.sectionHeading}>
+              <div><span className={styles.sectionIcon}><Sparkles size={19} /></span><div><span>ORTAK KARAR</span><h2>Bugünün odak noktaları</h2></div></div>
+              <span className={styles.dateBadge}>{data?.generated_at || "Bugün"}</span>
+            </div>
+            <div className={styles.focusList}>
+              {(report.today_focus?.length ? report.today_focus : ["Aktif hedefin için ilk küçük adımı bugün tamamla."]).map((focus, index) => (
+                <div className={styles.focusItem} key={`${focus}-${index}`}>
+                  <span className={styles.focusNumber}>{String(index + 1).padStart(2, "0")}</span>
+                  <p>{cleanPrefix(focus)}</p><ArrowRight size={18} />
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <div className={styles.signalGrid}>
+            <article className={`${styles.panel} ${styles.signalCard} ${styles.warningCard}`}>
+              <div className={styles.signalTitle}><AlertTriangle size={18} /><h3>Risk sinyalleri</h3><span>{report.warnings?.length || 0}</span></div>
+              {(report.warnings?.length ? report.warnings : ["Kritik bir risk sinyali bulunmuyor."]).map((item, index) => <p key={index}>{cleanPrefix(item)}</p>)}
+            </article>
+            <article className={`${styles.panel} ${styles.signalCard} ${styles.opportunityCard}`}>
+              <div className={styles.signalTitle}><Lightbulb size={18} /><h3>Fırsat radarı</h3><span>{report.opportunities?.length || 0}</span></div>
+              {(report.opportunities?.length ? report.opportunities : ["Yeni fırsatlar ilerleme verinle birlikte güncellenecek."]).map((item, index) => <p key={index}>{cleanPrefix(item)}</p>)}
+            </article>
+          </div>
+
+          <article className={`${styles.panel} ${styles.reportsPanel}`}>
+            <div className={styles.sectionHeading}>
+              <div><span className={styles.sectionIcon}><UsersRound size={19} /></span><div><span>UZMAN ÇIKTILARI</span><h2>Karar istihbaratı</h2></div></div>
+            </div>
+            <div className={styles.reportGrid}>
+              {results.timeline && <InsightCard icon={Clock3} title="Zaman çizelgesi" accent="cyan" text={results.timeline.reality_check}
+                metrics={[["Mevcut hız", `${results.timeline.current_pace_months} ay`], ["Optimize", `${results.timeline.optimized_pace_months} ay`]]} />}
+              {results.financial && <InsightCard icon={Coins} title="Finansal hazırlık" accent="amber"
+                metrics={[["Hedef birikim", `$${results.financial.target_savings_usd}`], ["Acil fon", `${results.financial.emergency_fund_months} ay`]]} />}
+              {results.skill_gap && <InsightCard icon={Route} title="Kritik yetenekler" accent="violet"
+                tags={(results.skill_gap.critical_gaps || []).slice(0, 3).map((gap: any) => gap.skill)} />}
+              {results.wellbeing && <InsightCard icon={HeartPulse} title="Enerji ve denge" accent="green"
+                text={`Tükenmişlik riski: ${results.wellbeing.risk_level || "Düşük"}`} progress={wellbeingScore} />}
+              {results.migration && <InsightCard icon={MapPinned} title="Göç planı" accent="pink"
+                text={`${results.migration.target_country || "Hedef ülke"} · ${results.migration.visa_recommendation || "Vize rotası analiz edildi"}`} />}
+              {results.career_coach && <InsightCard icon={Compass} title="Kariyer rotası" accent="blue"
+                text={results.career_coach.quick_start_action || results.career_coach.job_market_insight || "Kariyer yol haritası hazır."} />}
+            </div>
+          </article>
+        </div>
+
+        <aside className={styles.agentRail}>
+          <div className={styles.railHeader}><div><span>AKTİF KONSEY</span><h2>Uzman ajanlar</h2></div><span className={styles.liveBadge}><i /> {activeAgents.length} AKTİF</span></div>
+          <div className={styles.agentList}>
+            {activeAgents.map(([key, agent], index) => {
+              const Icon = agentIcons[key] || BrainCircuit;
+              return (
+                <div className={styles.agentItem} key={key}>
+                  <div className={styles.agentIcon}><Icon size={20} /></div>
+                  <div><strong>{agent.name.replace("Agent", "")}</strong><p>{agent.description}</p></div>
+                  <span className={styles.agentIndex}>{String(index + 1).padStart(2, "0")}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className={styles.orchestratorCard}>
+            <div className={styles.orchestratorIcon}><BrainCircuit size={27} /></div>
+            <div><span>MERKEZİ BEYİN</span><strong>Orchestrator</strong><p>Tüm uzman çıktılarını tek karar raporunda sentezliyor.</p></div>
+          </div>
+        </aside>
+      </section>
+    </div>
+  );
+}
+
+function InsightCard({
+  icon: Icon, title, accent, text, metrics, tags, progress,
+}: {
+  icon: typeof BrainCircuit; title: string; accent: string; text?: string;
+  metrics?: string[][]; tags?: string[]; progress?: number;
+}) {
+  return (
+    <div className={`${styles.insightCard} ${styles[`accent_${accent}`]}`}>
+      <div className={styles.insightTitle}><span><Icon size={18} /></span><h3>{title}</h3></div>
+      {text && <p>{text}</p>}
+      {metrics && <div className={styles.metricRow}>{metrics.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
+      {tags && <div className={styles.tagRow}>{tags.map((tag) => <span key={tag}>{tag}</span>)}</div>}
+      {progress !== undefined && <div className={styles.riskBar}><span style={{ width: `${progress}%` }} /></div>}
     </div>
   );
 }
